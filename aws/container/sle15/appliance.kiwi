@@ -1,0 +1,9 @@
+aws compatible container build
+
+could include the complete tool chain such that one
+container serves as source for all AWS services
+
+or could be split into multiple container builds as
+profiles for each AWS service
+
+pros and cons to be discussed...
