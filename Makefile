@@ -20,3 +20,18 @@ package:
 	cat package/python-${namespace}-spec-template | sed -e s'@%%VERSION@${version}@' \
 		> dist/python-${namespace}.spec
 	cp package/python-${namespace}.changes dist/
+
+
+setup:
+	poetry install --all-extras
+
+check: setup
+	poetry run flake8 --statistics -j auto --count ${namespace}
+	poetry run flake8 --statistics -j auto --count test/unit
+
+test: setup
+	poetry run mypy ${namespace}
+	poetry run bash -c 'pushd test/unit && pytest -n 5 \
+		--doctest-modules --no-cov-on-fail --cov=${namespace} \
+		--cov-report=term-missing --cov-fail-under=100 \
+		--cov-config .coveragerc'
