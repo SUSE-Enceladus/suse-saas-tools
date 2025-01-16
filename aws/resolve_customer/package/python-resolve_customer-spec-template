@@ -45,6 +45,7 @@ BuildRequires:  %{pythons}-poetry-core >= 1.2.0
 BuildRequires:  %{pythons}-wheel
 BuildRequires:  %{pythons}-requests
 BuildRequires:  %{pythons}-setuptools
+BuildRequires:  python-rpm-macros
 
 %description
 SaaS tooling for the pubcloud team.
@@ -53,7 +54,7 @@ SaaS tooling for the pubcloud team.
 %package -n %{pythons}-resolve_customer
 Summary:        resolve_customer - AWS ResolveCustomer
 Group:          %{pygroup}
-Requires:      python >= 3.11
+Requires:      python3 >= 3.11
 Requires:      %{pythons}-boto3
 Requires:      %{pythons}-requests
 Requires:      %{pythons}-setuptools
