@@ -40,11 +40,13 @@ Source:         %{name}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildRequires:  %{pythons}-%{develsuffix} >= 3.9
 BuildRequires:  %{pythons}-build
+BuildRequires:  %{pythons}-pip
 BuildRequires:  %{pythons}-installer
 BuildRequires:  %{pythons}-poetry-core >= 1.2.0
 BuildRequires:  %{pythons}-wheel
 BuildRequires:  %{pythons}-requests
 BuildRequires:  %{pythons}-setuptools
+BuildRequires:  python-rpm-macros
 
 %description
 SaaS tooling for the pubcloud team.
@@ -53,12 +55,12 @@ SaaS tooling for the pubcloud team.
 %package -n %{pythons}-sqs_event_manager
 Summary:        sqs_event_manager - AWS Lambda
 Group:          %{pygroup}
-Requires:       python >= 3.11
+Requires:       python3 >= 3.11
 Requires:       %{pythons}-boto3
 Requires:       %{pythons}-requests
 Requires:       %{pythons}-setuptools
 
-%description -n python%{python3_pkgversion}-sqs_event_manager
+%description -n %{pythons}-sqs_event_manager
 SaaS tooling for the pubcloud team.
 
 %prep
