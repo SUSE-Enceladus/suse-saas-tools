@@ -46,6 +46,7 @@ BuildRequires:  %{pythons}-poetry-core >= 1.2.0
 BuildRequires:  %{pythons}-wheel
 BuildRequires:  %{pythons}-requests
 BuildRequires:  %{pythons}-setuptools
+BuildRequires:  python-rpm-macros
 
 %description
 SaaS tooling for the pubcloud team.
