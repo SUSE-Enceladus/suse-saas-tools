@@ -15,20 +15,7 @@
 # Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
 
-# If they aren't provided by a system installed macro, define them
-%{!?_defaultdocdir: %global _defaultdocdir %{_datadir}/doc}
-
-%if 0%{?suse_version} >= 1600
-%define pythons %{primary_python}
-%else
-%define pythons python311
-%endif
-%global _sitelibdir %{%{pythons}_sitelib}
-
-%global pygroup Development/Languages/Python
-%global sysgroup System/Management
-%global develsuffix devel
-
+%{?sle15_python_module_pythons}
 Name:           python-resolve_customer
 Version:        %%VERSION
 Release:        0
@@ -38,29 +25,19 @@ Url:            https://github.com/SUSE-Enceladus/suse-saas-tools
 Group:          %{pygroup}
 Source:         %{name}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-BuildRequires:  %{pythons}-%{develsuffix} >= 3.9
-BuildRequires:  %{pythons}-build
-BuildRequires:  %{pythons}-pip
-BuildRequires:  %{pythons}-installer
-BuildRequires:  %{pythons}-poetry-core >= 1.2.0
-BuildRequires:  %{pythons}-wheel
-BuildRequires:  %{pythons}-requests
-BuildRequires:  %{pythons}-setuptools
+Requires:       %{python_module boto3}
+Requires:       %{python_module requests}
+Requires:       python3 >= 3.11
+BuildRequires:  python3 >= 3.11
+BuildRequires:  %{python_module devel}
+BuildRequires:  %{python_module setuptools}
+BuildRequires:  %{python_module pip}
+BuildRequires:  %{python_module poetry}
+BuildRequires:  fdupes
 BuildRequires:  python-rpm-macros
+%python_subpackages
 
 %description
-SaaS tooling for the pubcloud team.
-
-# python3xx-resolve_customer
-%package -n %{pythons}-resolve_customer
-Summary:        resolve_customer - AWS ResolveCustomer
-Group:          %{pygroup}
-Requires:      python3 >= 3.11
-Requires:      %{pythons}-boto3
-Requires:      %{pythons}-requests
-Requires:      %{pythons}-setuptools
-
-%description -n %{pythons}-resolve_customer
 SaaS tooling for the pubcloud team.
 
 %prep
@@ -71,10 +48,11 @@ SaaS tooling for the pubcloud team.
 
 %install
 %pyproject_install
+%python_expand %fdupes %{buildroot}%{$python_sitelib}
 install -m 755 app_resolve_customer.py %{buildroot}/app_resolve_customer.py
 
-%files -n %{pythons}-resolve_customer
-%{_sitelibdir}/resolve_customer*
+%files %{python_files}
+%{python_sitelib}/*
 /app_resolve_customer.py
 
 %changelog
