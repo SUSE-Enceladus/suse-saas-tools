@@ -19,6 +19,7 @@
 Lambda to retrieve customer information from
 AWS Metering/Entitlement Marketplace API's
 """
+import logging
 import json
 import base64
 from typing import (
@@ -27,6 +28,9 @@ from typing import (
 
 from resolve_customer.customer import AWSCustomer
 from resolve_customer.entitlements import AWSCustomerEntitlement
+
+logger = logging.getLogger('resolve_customer')
+logger.setLevel("INFO")
 
 
 def lambda_handler(event, context):
@@ -64,6 +68,8 @@ def lambda_handler(event, context):
     }
     """
     try:
+        logger.info(f'EVENT: {event}')
+        logger.info(f'CONTEXT: {context}')
         event_body = event['body']
         if event.get('isBase64Encoded'):
             event_body = json.loads(base64.b64decode(event_body))
