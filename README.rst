@@ -3,7 +3,10 @@ SUSE SaaS Tools
 
 A toolchain for handling Software as a Service subscriptions in
 cloud frameworks that connects to the SUSE authentication model
-via SCC.
+via SCC. The toolchain is provided as OCI container per CSP.
+Please find the latest builds at:
+
+https://build.opensuse.org/project/show/Cloud:Tools:SaaS
 
 Create a Python Virtual Development Environment
 -----------------------------------------------
