@@ -25,7 +25,8 @@ import logging
 from sqs_event_manager.queue import delete_message
 from sqs_event_manager.message import AWSSNSMessage
 
-logger = logging.getLogger()
+logger = logging.getLogger('sqs_event_manager')
+logger.setLevel('INFO')
 
 
 def lambda_handler(event, context):
@@ -97,7 +98,7 @@ def process_message(record: dict, batch_item_failures: dict):
         elif message.action == 'entitlement-updated':
             # Do we notify SCC to resolve customer API or do that here and
             # send an update to SCC?
-            logger.debug(
+            logger.info(
                 f'Entitlements updated for customer: {message.customer_id}'
             )
         else:
@@ -106,7 +107,7 @@ def process_message(record: dict, batch_item_failures: dict):
         # Always clean up message except on failure
         delete_message(message.event_source_arn, message.receipt_handle)
     except Exception as error:
-        logger.exception(f'Exception processing message {message.receipt_handle}: {error}')
+        logger.error(f'Exception processing message {message.receipt_handle}: {error}')
         batch_item_failures.append({'itemIdentifier': message.message_id})
 
 

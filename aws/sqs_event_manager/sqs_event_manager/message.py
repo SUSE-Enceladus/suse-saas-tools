@@ -17,7 +17,8 @@
 #
 import logging
 
-logger = logging.getLogger()
+logger = logging.getLogger('sqs_event_manager')
+logger.setLevel('INFO')
 
 
 class AWSSNSMessage:
