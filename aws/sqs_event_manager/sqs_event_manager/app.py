@@ -24,6 +24,7 @@ import logging
 
 from sqs_event_manager.queue import delete_message
 from sqs_event_manager.message import AWSSNSMessage
+from resolve_customer.entitlements import AWSCustomerEntitlement
 
 logger = logging.getLogger('sqs_event_manager')
 logger.setLevel('INFO')
@@ -96,11 +97,24 @@ def process_message(record: dict, batch_item_failures: dict):
         if not message.action:
             logger.info(f'Received an unknown message: {json.dumps(record)}')
         elif message.action == 'entitlement-updated':
-            # Do we notify SCC to resolve customer API or do that here and
-            # send an update to SCC?
-            logger.info(
-                f'Entitlements updated for customer: {message.customer_id}'
+            # Notify SCC of customer entitlement change for the given product
+            entitlements = AWSCustomerEntitlement(
+                message.customer_id,
+                message.product_code
             )
+            if entitlements.error:
+                return error_response(400, entitlements.error)
+
+            request = {  # noqa TODO: Cleanup noqa
+                'isBase64Encoded': False,
+                'statusCode': 200,
+                'body': {
+                    'CustomerIdentifier': message.customer_id,
+                    'ProductCode': message.product_code,
+                    'Entitlements': entitlements.get_entitlements()
+                }
+            }
+            # TODO: Send entitlement update request with entitlement info
         else:
             logger.info(f'Received a message with an unhandled action type: {message.action}')
 
