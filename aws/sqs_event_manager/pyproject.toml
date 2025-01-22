@@ -42,7 +42,7 @@ classifiers = [
 python = "^3.11"
 requests = ">=2.25.0"
 setuptools = ">=50"
-boto3 = ">=1.12"
+resolve_customer = { git = "https://github.com/SUSE-Enceladus/suse-saas-tools.git", subdirectory = "aws/resolve_customer", branch = "main" }
 
 [tool.poetry.scripts]
 # call scripts might be not needed, but just to show how

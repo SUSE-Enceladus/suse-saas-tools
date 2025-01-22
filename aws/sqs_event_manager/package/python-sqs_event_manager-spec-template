@@ -26,11 +26,13 @@ Group:          %{pygroup}
 Source:         %{name}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 Requires:       python3 >= 3.11
+Requires:       %{python_module resolve_customer}
 BuildRequires:  python3 >= 3.11
 BuildRequires:  %{python_module devel}
 BuildRequires:  %{python_module setuptools}
 BuildRequires:  %{python_module pip}
 BuildRequires:  %{python_module poetry}
+BuildRequires:  %{python_module resolve_customer}
 BuildRequires:  fdupes
 BuildRequires:  python-rpm-macros
 %python_subpackages
