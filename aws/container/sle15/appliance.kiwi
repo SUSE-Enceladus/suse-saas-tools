@@ -43,6 +43,7 @@
         <package name="python311-urllib3"/>
         <package name="python311-awslambdaric"/>
         <package name="python311-resolve_customer"/>
+        <package name="python311-sqs_event_manager"/>
     </packages>
     <packages type="delete">
         <package name="python3-base"/>
