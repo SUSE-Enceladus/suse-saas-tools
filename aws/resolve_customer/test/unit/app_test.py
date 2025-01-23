@@ -12,11 +12,12 @@ class TestApp:
     def test_lambda_handler_invalid_event(self):
         assert lambda_handler(event={'some': 'some'}, context=Mock()) == \
             '{"isBase64Encoded": false, "statusCode": 500, ' \
-            '"body": {"errors": {"Registration": "KeyError: \'body\'"}}}'
+            '"body": {"errors": {"Registration": "KeyError: \'body\'", ' \
+            '"Exception": "App.Error.InitEvent"}}}'
 
     @patch('resolve_customer.app.AWSCustomer')
     def test_lambda_handler_unexpected_error(self, mock_AWSCustomer):
-        mock_AWSCustomer.side_effect = Exception('some unexpected error')
+        mock_AWSCustomer.side_effect = IOError('some unexpected error')
         assert lambda_handler(
             event={
                 'isBase64Encoded': True,
@@ -24,7 +25,8 @@ class TestApp:
             }, context=Mock()
         ) == \
             '{"isBase64Encoded": false, "statusCode": 503, "body": ' \
-            '{"errors": {"Registration": "Exception: some unexpected error"}}}'
+            '{"errors": {"Registration": "OSError: some unexpected error", ' \
+            '"Exception": "App.Error.CSPService"}}}'
 
     @patch('resolve_customer.app.process_event')
     def test_lambda_handler(self, mock_process_event):
@@ -94,12 +96,15 @@ class TestApp:
                 'entitlements': entitlements.get_entitlements.return_value
             }
         }
-        customer.error = error_record(400, 'some-customer-error')
+        customer.error = error_record(400, 'some-customer-error', 'Some')
         assert process_event('token') == {
             'isBase64Encoded': False,
             'statusCode': 400,
             'body': {
-                'errors': {'Registration': 'some-customer-error'}
+                'errors': {
+                    'Registration': 'some-customer-error',
+                    'Exception': 'App.Error.Some'
+                }
             }
         }
         customer.error = {}
@@ -108,6 +113,9 @@ class TestApp:
             'isBase64Encoded': False,
             'statusCode': 400,
             'body': {
-                'errors': {'Registration': 'some-entitlement-error'}
+                'errors': {
+                    'Registration': 'some-entitlement-error',
+                    'Exception': 'App.Error.Unknown'
+                }
             }
         }

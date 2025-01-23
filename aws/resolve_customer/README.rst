@@ -51,7 +51,10 @@ ERROR RESPONSE
         "isBase64Encoded": false,
         "statusCode": HTTP_STATUS_CODE,
         "body": {
-            "errors": {"Registration": "MESSAGE"}
+            "errors": {
+                "Registration": "MESSAGE",
+                "Exception": "AWS. or App. error code"
+            }
         }
     }
 

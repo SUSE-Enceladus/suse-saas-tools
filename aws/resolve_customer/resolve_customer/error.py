@@ -15,7 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with mash.  If not, see <http://www.gnu.org/licenses/>
 #
+import logging
 from typing import Dict
+
+logger = logging.getLogger()
 
 
 def error_response(error: Dict, topic: str):
@@ -24,18 +27,31 @@ def error_response(error: Dict, topic: str):
         'statusCode': error['ResponseMetadata']['HTTPStatusCode'],
         'body': {
             'errors': {
-                topic: error['Error']['Message']
+                topic: error['Error']['Message'],
+                "Exception": error['Error']['Code']
             }
         }
     }
 
 
-def error_record(status_code: int, message: str) -> Dict:
+def error_record(status_code: int, message: str, kind: str = 'Unknown') -> Dict:
     return {
         'ResponseMetadata': {
             'HTTPStatusCode': status_code
         },
         'Error': {
-            'Message': message
+            'Message': message,
+            'Code': f'App.Error.{kind}'
         }
     }
+
+
+def classify_error(error: Dict, aws_code: str, status_code: int) -> Dict:
+    error_code = error['Error']['Code']
+    if error_code == aws_code:
+        error['ResponseMetadata']['HTTPStatusCode'] = status_code
+    return error
+
+
+def log_error(error: Dict) -> None:
+    logger.error(error['Error']['Message'])

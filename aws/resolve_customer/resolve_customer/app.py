@@ -85,7 +85,9 @@ def lambda_handler(event, context):
     except Exception as error:
         return json.dumps(
             error_response(
-                error_record(500, f'{type(error).__name__}: {error}'), topic
+                error_record(
+                    500, f'{type(error).__name__}: {error}', 'InitEvent'
+                ), topic
             )
         )
 
@@ -106,7 +108,9 @@ def process_event(
         # Some unexpected exception happened, report as internal
         # server error including the message we got
         return error_response(
-            error_record(503, f'{type(oops).__name__}: {oops}'), topic
+            error_record(
+                503, f'{type(oops).__name__}: {oops}', 'CSPService'
+            ), topic
         )
     return {
         'isBase64Encoded': False,

@@ -15,13 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with mash.  If not, see <http://www.gnu.org/licenses/>
 #
-import logging
 import boto3
 from botocore.exceptions import ClientError
-from resolve_customer.error import error_record
+from resolve_customer.error import (
+    error_record, log_error
+)
 from typing import List
-
-logger = logging.getLogger()
 
 
 class AWSCustomerEntitlement:
@@ -42,12 +41,12 @@ class AWSCustomerEntitlement:
                 )
             except ClientError as error:
                 self.error = error.response
-                logger.error(self.error['Error']['Message'])
+                log_error(self.error)
         else:
             self.error = error_record(
-                422, 'no customer_id and/or product_code provided'
+                422, 'no customer_id and/or product_code provided', 'EventData'
             )
-            logger.error(self.error['Error']['Message'])
+            log_error(self.error)
 
     def get_entitlements(self) -> List[dict]:
         entitlements = []
