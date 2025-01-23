@@ -49,8 +49,10 @@ SaaS tooling for the pubcloud team.
 %install
 %pyproject_install
 %python_expand %fdupes %{buildroot}%{$python_sitelib}
+install -m 755 app_sqs_event_manager.py %{buildroot}/app_sqs_event_manager.py
 
 %files %{python_files}
 %{python_sitelib}/*
+/app_sqs_event_manager.py
 
 %changelog
