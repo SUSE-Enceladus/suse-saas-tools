@@ -17,6 +17,8 @@
 #
 import logging
 import boto3
+from botocore.exceptions import ClientError
+from resolve_customer.error import error_record
 
 logger = logging.getLogger()
 
@@ -27,19 +29,19 @@ class AWSCustomer:
     """
     def __init__(self, token: str):
         self.customer = {}
-        self.error = ''
+        self.error = {}
         if token:
             try:
                 marketplace = boto3.client('meteringmarketplace')
                 self.customer = marketplace.resolve_customer(
                     RegistrationToken=token
                 )
-            except Exception as error:
-                self.error = f'meteringmarketplace client failed with: {error}'
-                logger.error(self.error)
+            except ClientError as error:
+                self.error = error.response
+                logger.error(self.error['Error']['Message'])
         else:
-            self.error = 'no marketplace token provided'
-            logger.error(self.error)
+            self.error = error_record(422, 'no marketplace token provided')
+            logger.error(self.error['Error']['Message'])
 
     def get_id(self) -> str:
         return self.__get('CustomerIdentifier')

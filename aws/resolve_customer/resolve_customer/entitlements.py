@@ -17,6 +17,8 @@
 #
 import logging
 import boto3
+from botocore.exceptions import ClientError
+from resolve_customer.error import error_record
 from typing import List
 
 logger = logging.getLogger()
@@ -28,7 +30,7 @@ class AWSCustomerEntitlement:
     """
     def __init__(self, customer_id: str, product_code: str):
         self.entitlements = {}
-        self.error = ''
+        self.error = {}
         if customer_id and product_code:
             try:
                 marketplace = boto3.client('marketplace-entitlement')
@@ -38,12 +40,47 @@ class AWSCustomerEntitlement:
                         'Filter': {'CUSTOMER_IDENTIFIER': [customer_id]}
                     }
                 )
-            except Exception as error:
-                self.error = f'marketplace-entitlement client failed with: {error}'
-                logger.error(self.error)
+            except ClientError as error:
+                self.error = error.response
+                logger.error(self.error['Error']['Message'])
         else:
-            self.error = 'no customer_id and/or product_code provided'
-            logger.error(self.error)
+            self.error = error_record(
+                422, 'no customer_id and/or product_code provided'
+            )
+            logger.error(self.error['Error']['Message'])
 
     def get_entitlements(self) -> List[dict]:
-        return self.entitlements.get('Entitlements') or []
+        entitlements = []
+        if self.entitlements:
+            for entitelement in self.entitlements['Entitlements']:
+                entitlements.append(
+                    {
+                        'customerIdentifier': entitelement.get(
+                            'CustomerIdentifier'
+                        ),
+                        'productCode': entitelement.get(
+                            'ProductCode'
+                        ),
+                        'expirationDate': entitelement.get(
+                            'ExpirationDate'
+                        ),
+                        'dimension': entitelement.get(
+                            'Dimension'
+                        ),
+                        'value': {
+                            'booleanValue': entitelement['Value'].get(
+                                'BooleanValue'
+                            ),
+                            'doubleValue': entitelement['Value'].get(
+                                'DoubleValue'
+                            ),
+                            'integerValue': entitelement['Value'].get(
+                                'IntegerValue'
+                            ),
+                            'stringValue': entitelement['Value'].get(
+                                'StringValue'
+                            )
+                        }
+                    }
+                )
+        return entitlements
