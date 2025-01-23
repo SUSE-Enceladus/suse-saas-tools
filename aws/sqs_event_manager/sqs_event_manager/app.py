@@ -106,13 +106,10 @@ def process_message(record: dict, batch_item_failures: dict):
                 return error_response(400, entitlements.error)
 
             request = {  # noqa TODO: Cleanup noqa
-                'isBase64Encoded': False,
-                'statusCode': 200,
-                'body': {
-                    'CustomerIdentifier': message.customer_id,
-                    'ProductCode': message.product_code,
-                    'Entitlements': entitlements.get_entitlements()
-                }
+                'CustomerIdentifier': message.customer_id,
+                'MarketplaceIdentifier': 'AWS',
+                'ProductCode': message.product_code,
+                'Entitlements': entitlements.get_entitlements()
             }
             # TODO: Send entitlement update request with entitlement info
         else:
