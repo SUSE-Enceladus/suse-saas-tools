@@ -39,7 +39,7 @@ def lambda_handler(event, context):
 
     Example event body:
     {
-        "x-amzn-marketplace-token": "some"
+        "registrationToken": "some"
     }
 
     Example return:
@@ -74,7 +74,7 @@ def lambda_handler(event, context):
         if event.get('isBase64Encoded'):
             event_body = json.loads(base64.b64decode(event_body))
         return json.dumps(
-            process_event(event_body.get('x-amzn-marketplace-token'))
+            process_event(event_body.get('registrationToken'))
         )
     except Exception as error:
         return json.dumps(

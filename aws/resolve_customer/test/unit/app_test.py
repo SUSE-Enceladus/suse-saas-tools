@@ -51,7 +51,7 @@ class TestApp:
                     'time': '15/Jan/2025:16:44:01 +0000',
                     'timeEpoch': 1736959441730
                 },
-                'body': 'eyJ4LWFtem4tbWFya2V0cGxhY2UtdG9rZW4iOiAidG9rZW4ifQo=',
+                'body': 'eyJyZWdpc3RyYXRpb25Ub2tlbiI6ICJ0b2tlbiJ9Cg==',
                 'isBase64Encoded': True
             },
             context=Mock()
