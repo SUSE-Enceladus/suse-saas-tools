@@ -26,11 +26,17 @@ from typing import (
     Dict, Union, List
 )
 
+from resolve_customer.error import (
+    error_record, error_response
+)
 from resolve_customer.customer import AWSCustomer
 from resolve_customer.entitlements import AWSCustomerEntitlement
 
 logger = logging.getLogger('resolve_customer')
 logger.setLevel("INFO")
+
+# Topic name for this lambda
+topic = 'Registration'
 
 
 def lambda_handler(event, context):
@@ -45,22 +51,22 @@ def lambda_handler(event, context):
     Example return:
     {
         "statusCode": 200,
-        "isBase64Encoded": False,
+        "isBase64Encoded": false,
         "body": {
-            "CustomerIdentifier": "id"
-            "CustomerAWSAccountId": "account_id"
-            "ProductCode": "product_code"
-            "Entitlements": [
+            "marketplaceIdentifier": "AWS",
+            "marketplaceAccountId": "CustomerAWSAccountId"
+            "CustomerIdentifier": "CustomerIdentifier"
+            "entitlements": [
                 {
-                    "CustomerIdentifier": "id",
-                    "Dimension": "some",
-                    "ExpirationDate": date,
-                    "ProductCode": "product_code",
-                    "Value": {
-                        "BooleanValue": true|false,
-                        "DoubleValue": number,
-                        "IntegerValue": number,
-                        "StringValue": "str"
+                    "customerIdentifier": "string",
+                    "productCode": "string",
+                    "expirationDate": 123123111231,
+                    "dimension": "string",
+                    "value": {
+                        "booleanValue": true|false,
+                        "doubleValue": 1,
+                        "integerValue": 2,
+                        "stringValue": "string"
                     }
                 }
             ]
@@ -78,36 +84,41 @@ def lambda_handler(event, context):
         )
     except Exception as error:
         return json.dumps(
-            error_response(500, f'{type(error).__name__}: {error}')
+            error_response(
+                error_record(
+                    500, f'{type(error).__name__}: {error}', 'InitEvent'
+                ), topic
+            )
         )
 
 
 def process_event(
     token: str
 ) -> Dict[str, Union[str, int, Dict[str, Union[str, List]]]]:
-    customer = AWSCustomer(token)
-    if customer.error:
-        return error_response(400, customer.error)
-    entitlements = AWSCustomerEntitlement(
-        customer.get_id(), customer.get_product_code()
-    )
-    if entitlements.error:
-        return error_response(400, entitlements.error)
+    try:
+        customer = AWSCustomer(token)
+        if customer.error:
+            return error_response(customer.error, topic)
+        entitlements = AWSCustomerEntitlement(
+            customer.get_id(), customer.get_product_code()
+        )
+        if entitlements.error:
+            return error_response(entitlements.error, topic)
+    except Exception as oops:
+        # Some unexpected exception happened, report as internal
+        # server error including the message we got
+        return error_response(
+            error_record(
+                503, f'{type(oops).__name__}: {oops}', 'CSPService'
+            ), topic
+        )
     return {
         'isBase64Encoded': False,
         'statusCode': 200,
         'body': {
-            'CustomerIdentifier': customer.get_id(),
-            'CustomerAWSAccountId': customer.get_account_id(),
-            'ProductCode': customer.get_product_code(),
-            'Entitlements': entitlements.get_entitlements()
+            'marketplaceIdentifier': 'AWS',
+            'marketplaceAccountId': customer.get_account_id(),
+            'customerIdentifier': customer.get_id(),
+            'entitlements': entitlements.get_entitlements()
         }
-    }
-
-
-def error_response(status_code: int, message: str):
-    return {
-        'isBase64Encoded': False,
-        'statusCode': status_code,
-        'body': message
     }

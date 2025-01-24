@@ -5,6 +5,7 @@ from unittest.mock import (
 from pytest import fixture
 
 from botocore.exceptions import ClientError
+from resolve_customer.error import error_record
 from resolve_customer.entitlements import AWSCustomerEntitlement
 
 
@@ -44,7 +45,10 @@ class TestAWSCustomerEntitlement:
     @patch('boto3.client')
     def test_setup_boto_client_raises(self, mock_boto_client):
         mock_boto_client.side_effect = ClientError(
-            operation_name=MagicMock(), error_response=MagicMock()
+            operation_name=MagicMock(),
+            error_response=error_record(
+                400, 'marketplace-entitlement client failed'
+            )
         )
         with self._caplog.at_level(logging.INFO):
             AWSCustomerEntitlement('id', 'product')
@@ -53,15 +57,15 @@ class TestAWSCustomerEntitlement:
     def test_get_entitlements(self):
         assert self.entitlements.get_entitlements() == [
             {
-                'CustomerIdentifier': 'id',
-                'Dimension': 'some',
-                'ExpirationDate': 'some',
-                'ProductCode': 'some',
-                'Value': {
-                    'BooleanValue': True,
-                    'DoubleValue': 42,
-                    'IntegerValue': 42,
-                    'StringValue': 'some'
+                'customerIdentifier': 'id',
+                'dimension': 'some',
+                'expirationDate': 'some',
+                'productCode': 'some',
+                'value': {
+                    'booleanValue': True,
+                    'doubleValue': 42,
+                    'integerValue': 42,
+                    'stringValue': 'some'
                 }
             }
         ]

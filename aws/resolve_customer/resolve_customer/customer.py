@@ -15,10 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with mash.  If not, see <http://www.gnu.org/licenses/>
 #
-import logging
 import boto3
-
-logger = logging.getLogger()
+from botocore.exceptions import ClientError
+# from resolve_customer.error import classify_error
+from resolve_customer.error import (
+    error_record, log_error
+)
 
 
 class AWSCustomer:
@@ -27,19 +29,29 @@ class AWSCustomer:
     """
     def __init__(self, token: str):
         self.customer = {}
-        self.error = ''
+        self.error = {}
         if token:
             try:
                 marketplace = boto3.client('meteringmarketplace')
                 self.customer = marketplace.resolve_customer(
                     RegistrationToken=token
                 )
-            except Exception as error:
-                self.error = f'meteringmarketplace client failed with: {error}'
-                logger.error(self.error)
+            except ClientError as error:
+                self.error = error.response
+                # Custom error code classification: For details see:
+                # https://docs.aws.amazon.com/marketplace/latest/APIReference/API_marketplace-metering_ResolveCustomer.html
+                # If a specific AWS error code needs to be handled as different
+                # HTTP status code, it can be classified as such as follows:
+                #
+                # self.error = classify_error(
+                #     self.error, 'AWS.ResolveCustomer.ExpiredTokenException', 400
+                # )
+                log_error(self.error)
         else:
-            self.error = 'no marketplace token provided'
-            logger.error(self.error)
+            self.error = error_record(
+                422, 'no marketplace token provided', 'EventData'
+            )
+            log_error(self.error)
 
     def get_id(self) -> str:
         return self.__get('CustomerIdentifier')

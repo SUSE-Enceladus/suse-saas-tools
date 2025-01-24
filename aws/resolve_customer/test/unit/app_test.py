@@ -2,6 +2,7 @@ from unittest.mock import (
     Mock, patch
 )
 
+from resolve_customer.error import error_record
 from resolve_customer.app import (
     lambda_handler, process_event
 )
@@ -10,8 +11,22 @@ from resolve_customer.app import (
 class TestApp:
     def test_lambda_handler_invalid_event(self):
         assert lambda_handler(event={'some': 'some'}, context=Mock()) == \
-            '{\"isBase64Encoded\": false, \"statusCode\": 500, ' \
-            '\"body\": \"KeyError: \'body\'\"}'
+            '{"isBase64Encoded": false, "statusCode": 500, ' \
+            '"body": {"errors": {"Registration": "KeyError: \'body\'", ' \
+            '"Exception": "App.Error.InitEvent"}}}'
+
+    @patch('resolve_customer.app.AWSCustomer')
+    def test_lambda_handler_unexpected_error(self, mock_AWSCustomer):
+        mock_AWSCustomer.side_effect = IOError('some unexpected error')
+        assert lambda_handler(
+            event={
+                'isBase64Encoded': True,
+                'body': 'eyJyZWdpc3RyYXRpb25Ub2tlbiI6ICJ0b2tlbiJ9Cg==',
+            }, context=Mock()
+        ) == \
+            '{"isBase64Encoded": false, "statusCode": 503, "body": ' \
+            '{"errors": {"Registration": "OSError: some unexpected error", ' \
+            '"Exception": "App.Error.CSPService"}}}'
 
     @patch('resolve_customer.app.process_event')
     def test_lambda_handler(self, mock_process_event):
@@ -66,31 +81,41 @@ class TestApp:
         self, mock_AWSCustomerEntitlement, mock_AWSCustomer
     ):
         customer = Mock()
-        customer.error = ''
+        customer.error = {}
         entitlements = Mock()
-        entitlements.error = ''
+        entitlements.error = {}
         mock_AWSCustomer.return_value = customer
         mock_AWSCustomerEntitlement.return_value = entitlements
         assert process_event('token') == {
             'isBase64Encoded': False,
             'statusCode': 200,
             'body': {
-                'CustomerIdentifier': customer.get_id.return_value,
-                'CustomerAWSAccountId': customer.get_account_id.return_value,
-                'ProductCode': customer.get_product_code.return_value,
-                'Entitlements': entitlements.get_entitlements.return_value
+                'marketplaceIdentifier': 'AWS',
+                'marketplaceAccountId': customer.get_account_id.return_value,
+                'customerIdentifier': customer.get_id.return_value,
+                'entitlements': entitlements.get_entitlements.return_value
             }
         }
-        customer.error = 'some-customer-error'
+        customer.error = error_record(400, 'some-customer-error', 'Some')
         assert process_event('token') == {
             'isBase64Encoded': False,
             'statusCode': 400,
-            'body': 'some-customer-error'
+            'body': {
+                'errors': {
+                    'Registration': 'some-customer-error',
+                    'Exception': 'App.Error.Some'
+                }
+            }
         }
-        customer.error = ''
-        entitlements.error = 'some-entitlement-error'
+        customer.error = {}
+        entitlements.error = error_record(400, 'some-entitlement-error')
         assert process_event('token') == {
             'isBase64Encoded': False,
             'statusCode': 400,
-            'body': 'some-entitlement-error'
+            'body': {
+                'errors': {
+                    'Registration': 'some-entitlement-error',
+                    'Exception': 'App.Error.Unknown'
+                }
+            }
         }

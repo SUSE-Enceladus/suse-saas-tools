@@ -5,6 +5,7 @@ from unittest.mock import (
 from pytest import fixture
 
 from botocore.exceptions import ClientError
+from resolve_customer.error import error_record
 from resolve_customer.customer import AWSCustomer
 
 
@@ -31,8 +32,14 @@ class TestAWSCustomer:
 
     @patch('boto3.client')
     def test_setup_boto_client_raises(self, mock_boto_client):
+        error_response = error_record(
+            400, 'meteringmarketplace client failed'
+        )
+        error_response['Error']['Code'] = \
+            'AWS.ResolveCustomer.ExpiredTokenException'
         mock_boto_client.side_effect = ClientError(
-            operation_name=MagicMock(), error_response=MagicMock()
+            operation_name=MagicMock(),
+            error_response=error_response
         )
         with self._caplog.at_level(logging.INFO):
             AWSCustomer('token')
