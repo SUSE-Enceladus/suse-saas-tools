@@ -1,3 +1,5 @@
+import json
+
 from pytest import fixture
 
 from sqs_event_manager.message import AWSSNSMessage
@@ -9,24 +11,30 @@ class TestAWSSNSMessage:
         self._caplog = caplog
 
     def setup_method(self, cls):
-        record = {
-            'message_id': '123',
-            'receipt_handle': 'abc123',
-            'body': {
+        message = json.dumps(
+            {
+                'action': 'entitlement-updated',
+                'customer-identifier': 'abc123',
+                'product-code': '7hn1uo40wt6psy10ovxyh4zzn',
+            }
+        )
+        body = json.dumps(
+            {
                 'Type': 'Notification',
                 'MessageId': '6f4eae69-8205-5531-84f7-f1b478aeb04',
                 'TopicArn': 'arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX',
-                'Message': {
-                    'action': 'entitlement-updated',
-                    'customer-identifier': 'abc123',
-                    'product-code': '7hn1uo40wt6psy10ovxyh4zzn',
-                },
+                'Message': message,
                 'Timestamp': '2025-01-15 16:31:50',
                 'SignatureVersion': '1',
                 'Signature': 'signature',
                 'SigningCertURL': 'https://cert.com',
                 'UnsubscribeURL': 'https://unsub.com'
-            },
+            }
+        )
+        record = {
+            'messageId': '123',
+            'receiptHandle': 'abc123',
+            'body': body,
             'attributes': {
                 'ApproximateReceiveCount': '1',
                 'SentTimestamp': '1545082649183',
