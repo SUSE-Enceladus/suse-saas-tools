@@ -17,6 +17,8 @@
 #
 import boto3
 from botocore.exceptions import ClientError
+from resolve_customer.defaults import Defaults
+from resolve_customer.assume_role import AWSAssumeRole
 from resolve_customer.error import (
     error_record, log_error
 )
@@ -32,12 +34,21 @@ class AWSCustomerEntitlement:
         self.error = {}
         if customer_id and product_code:
             try:
-                marketplace = boto3.client('marketplace-entitlement')
+                assume_role_config = Defaults.get_assume_role_config()
+                assume_role = AWSAssumeRole(
+                    assume_role_config['role']['arn'],
+                    assume_role_config['role']['session']
+                )
+                marketplace = boto3.client(
+                    'marketplace-entitlement',
+                    region_name=assume_role_config['role']['region'],
+                    aws_access_key_id=assume_role.get_access_key(),
+                    aws_secret_access_key=assume_role.get_secret_access_key(),
+                    aws_session_token=assume_role.get_session_token()
+                )
                 self.entitlements = marketplace.get_entitlements(
-                    {
-                        'ProductCode': product_code,
-                        'Filter': {'CUSTOMER_IDENTIFIER': [customer_id]}
-                    }
+                    ProductCode=product_code,
+                    Filter={'CUSTOMER_IDENTIFIER': [customer_id]}
                 )
             except ClientError as error:
                 self.error = error.response
@@ -60,8 +71,8 @@ class AWSCustomerEntitlement:
                         'productCode': entitelement.get(
                             'ProductCode'
                         ),
-                        'expirationDate': entitelement.get(
-                            'ExpirationDate'
+                        'expirationDate': format(
+                            entitelement.get('ExpirationDate')
                         ),
                         'dimension': entitelement.get(
                             'Dimension'

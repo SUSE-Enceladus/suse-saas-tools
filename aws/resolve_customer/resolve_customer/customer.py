@@ -16,7 +16,10 @@
 # along with mash.  If not, see <http://www.gnu.org/licenses/>
 #
 import boto3
+import urllib.parse
 from botocore.exceptions import ClientError
+from resolve_customer.defaults import Defaults
+from resolve_customer.assume_role import AWSAssumeRole
 # from resolve_customer.error import classify_error
 from resolve_customer.error import (
     error_record, log_error
@@ -27,12 +30,24 @@ class AWSCustomer:
     """
     Get AWS customer ID information from a marketplace token
     """
-    def __init__(self, token: str):
+    def __init__(self, urlEncodedtoken: str):
         self.customer = {}
         self.error = {}
-        if token:
+        if urlEncodedtoken:
             try:
-                marketplace = boto3.client('meteringmarketplace')
+                token = urllib.parse.unquote(urlEncodedtoken)
+                assume_role_config = Defaults.get_assume_role_config()
+                assume_role = AWSAssumeRole(
+                    assume_role_config['role']['arn'],
+                    assume_role_config['role']['session']
+                )
+                marketplace = boto3.client(
+                    'meteringmarketplace',
+                    region_name=assume_role_config['role']['region'],
+                    aws_access_key_id=assume_role.get_access_key(),
+                    aws_secret_access_key=assume_role.get_secret_access_key(),
+                    aws_session_token=assume_role.get_session_token()
+                )
                 self.customer = marketplace.resolve_customer(
                     RegistrationToken=token
                 )

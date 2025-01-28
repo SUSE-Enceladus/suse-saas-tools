@@ -10,7 +10,7 @@ Through AWS API Gateway
 .. code::
 
     {
-        "registrationToken": "some"
+        "registrationToken": "someURLEncodedToken"
     }
 
 RESPONSE
