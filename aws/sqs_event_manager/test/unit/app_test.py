@@ -1,3 +1,4 @@
+import json
 import logging
 
 from unittest.mock import (
@@ -9,24 +10,30 @@ from sqs_event_manager.app import (
 )
 from pytest import fixture
 
-record = {
-    'message_id': '123',
-    'receipt_handle': 'abc123',
-    'body': {
+message = json.dumps(
+    {
+        'action': 'entitlement-updated',
+        'customer-identifier': 'abc123',
+        'product-code': '7hn1uo40wt6psy10ovxyh4zzn',
+    }
+)
+body = json.dumps(
+    {
         'Type': 'Notification',
         'MessageId': '6f4eae69-8205-5531-84f7-f1b478aeb04',
         'TopicArn': 'arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX',
-        'Message': {
-            'action': 'entitlement-updated',
-            'customer-identifier': 'abc123',
-            'product-code': '7hn1uo40wt6psy10ovxyh4zzn',
-        },
+        'Message': message,
         'Timestamp': '2025-01-15 16:31:50',
         'SignatureVersion': '1',
         'Signature': 'signature',
         'SigningCertURL': 'https://cert.com',
         'UnsubscribeURL': 'https://unsub.com'
-    },
+    }
+)
+record = {
+    'messageId': '123',
+    'receiptHandle': 'abc123',
+    'body': body,
     'attributes': {
         'ApproximateReceiveCount': '1',
         'SentTimestamp': '1545082649183',
@@ -81,12 +88,12 @@ class TestApp:
         process_message(record, batch_item_failures)
         assert len(batch_item_failures) == 0
 
-        record['body']['Message']['action'] = None
-        with self._caplog.at_level(logging.INFO):
-            process_message(record, batch_item_failures)
-            assert 'Received an unknown message:' in self._caplog.text
-
-        record['body']['Message']['action'] = 'fake-event'
+        record['body'] = record['body'].replace('entitlement-updated', 'fake-event')
         with self._caplog.at_level(logging.INFO):
             process_message(record, batch_item_failures)
             assert 'Received a message with an unhandled action type: fake-event' in self._caplog.text
+
+        record['body'] = record['body'].replace('action', 'actions')
+        with self._caplog.at_level(logging.INFO):
+            process_message(record, batch_item_failures)
+            assert 'Received an unknown message:' in self._caplog.text
