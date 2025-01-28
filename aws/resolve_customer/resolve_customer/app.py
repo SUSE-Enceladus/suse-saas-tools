@@ -86,7 +86,7 @@ def lambda_handler(event, context):
         return json.dumps(
             error_response(
                 error_record(
-                    500, f'{type(error).__name__}: {error}', 'InitEvent'
+                    500, f'{type(error).__name__}: {error}', 'InternalServiceErrorException'
                 ), topic
             )
         )
@@ -109,7 +109,7 @@ def process_event(
         # server error including the message we got
         return error_response(
             error_record(
-                503, f'{type(oops).__name__}: {oops}', 'CSPService'
+                503, f'{type(oops).__name__}: {oops}', 'ServiceUnavailableException'
             ), topic
         )
     return {
