@@ -24,7 +24,7 @@ RESPONSE
         "body": {
             "marketplaceIdentifier": "AWS",
             "marketplaceAccountId": "CustomerAWSAccountId"
-            "CustomerIdentifier": "CustomerIdentifier"
+            "customerIdentifier": "CustomerIdentifier"
             "entitlements": [
                 {
                     "customerIdentifier": "string",
