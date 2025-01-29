@@ -20,9 +20,8 @@ import urllib.parse
 from botocore.exceptions import ClientError
 from resolve_customer.defaults import Defaults
 from resolve_customer.assume_role import AWSAssumeRole
-# from resolve_customer.error import classify_error
 from resolve_customer.error import (
-    error_record, log_error
+    error_record, log_error, classify_error
 )
 
 
@@ -53,18 +52,28 @@ class AWSCustomer:
                 )
             except ClientError as error:
                 self.error = error.response
-                # Custom error code classification: For details see:
-                # https://docs.aws.amazon.com/marketplace/latest/APIReference/API_marketplace-metering_ResolveCustomer.html
-                # If a specific AWS error code needs to be handled as different
-                # HTTP status code, it can be classified as such as follows:
-                #
-                # self.error = classify_error(
-                #     self.error, 'AWS.ResolveCustomer.ExpiredTokenException', 400
-                # )
+                # Classify group of errors into app exception and HTTP code
+                self.error = classify_error(
+                    self.error, 'ExpiredTokenException',
+                    400, 'App.Error.TokenException'
+                )
+                self.error = classify_error(
+                    self.error, 'InvalidTokenException',
+                    400, 'App.Error.TokenException'
+                )
+                self.error = classify_error(
+                    self.error, 'ThrottlingException',
+                    400, 'App.Error.TokenException'
+                )
+                self.error = classify_error(
+                    self.error, 'DisabledApiException',
+                    400, 'App.Error.TokenException'
+                )
                 log_error(self.error)
         else:
             self.error = error_record(
-                422, 'no marketplace token provided', 'EventData'
+                422, 'no marketplace token provided',
+                'MissingTokenException'
             )
             log_error(self.error)
 

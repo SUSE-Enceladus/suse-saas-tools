@@ -20,7 +20,7 @@ from botocore.exceptions import ClientError
 from resolve_customer.defaults import Defaults
 from resolve_customer.assume_role import AWSAssumeRole
 from resolve_customer.error import (
-    error_record, log_error
+    error_record, log_error, classify_error
 )
 from typing import List
 
@@ -52,10 +52,20 @@ class AWSCustomerEntitlement:
                 )
             except ClientError as error:
                 self.error = error.response
+                # Classify group of errors into app exception and HTTP code
+                self.error = classify_error(
+                    self.error, 'InvalidParameterException',
+                    400, 'App.Error.EntitlementException'
+                )
+                self.error = classify_error(
+                    self.error, 'ThrottlingException',
+                    400, 'App.Error.EntitlementException'
+                )
                 log_error(self.error)
         else:
             self.error = error_record(
-                422, 'no customer_id and/or product_code provided', 'EventData'
+                500, 'no customer_id and/or product_code provided',
+                'InternalServiceErrorException'
             )
             log_error(self.error)
 
