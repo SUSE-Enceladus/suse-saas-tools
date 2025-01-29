@@ -103,13 +103,11 @@ def process_message(record: dict, batch_item_failures: dict):
                 message.product_code
             )
             if entitlements.error:
-                logger.error(
+                raise Exception(
                     'Exception getting entitlements for customer '
                     f'{message.customer_id} and product '
                     '{message.product_code}. {entitlements.error}'
                 )
-                batch_item_failures.append({'itemIdentifier': message.message_id})
-                return
 
             request = {  # noqa TODO: Cleanup noqa
                 'customerIdentifier': message.customer_id,
