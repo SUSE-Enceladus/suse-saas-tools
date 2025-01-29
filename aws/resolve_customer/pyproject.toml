@@ -44,6 +44,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.11"
 requests = ">=2.25.0"
+PyYAML = ">=5.4.0"
 setuptools = ">=50"
 boto3 = ">=1.12"
 
@@ -56,6 +57,7 @@ pytest-xdist = "*"
 # type checking
 mypy = ">=0.971"
 types-requests = "*"
+types-PyYAML = "*"
 types-mock = "*"
 
 [tool.poetry.group.style]

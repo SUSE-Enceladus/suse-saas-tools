@@ -46,10 +46,14 @@ def error_record(status_code: int, message: str, kind: str = 'Unknown') -> Dict:
     }
 
 
-def classify_error(error: Dict, aws_code: str, status_code: int) -> Dict:
+def classify_error(
+    error: Dict, aws_code: str, status_code: int, exception_name: str = ''
+) -> Dict:
     error_code = error['Error']['Code']
     if error_code == aws_code:
         error['ResponseMetadata']['HTTPStatusCode'] = status_code
+        if exception_name:
+            error['Error']['Code'] = exception_name
     return error
 
 

@@ -10,7 +10,7 @@ Through AWS API Gateway
 .. code::
 
     {
-        "registrationToken": "some"
+        "registrationToken": "someURLEncodedToken"
     }
 
 RESPONSE
@@ -58,7 +58,19 @@ ERROR RESPONSE
         }
     }
 
-* 500: Internal Server Error
-* 503: Service unavailable, any non AWS ClientException
-* 422: no marketplace token provided / no customer_id and/or product_code provided
-* HTTP_STATUS_CODE: HTTP status code as it was provided by the client call
+
+Application handled exceptions:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* 500: App.Error.InternalServiceErrorException
+* 503: App.Error.ServiceUnavailableException
+* 422: App.Error.MissingTokenException
+* 400: App.Error.TokenException from
+       InvalidTokenException, ExpiredTokenException, ThrottlingException, DisabledApiException
+* 400: App.Error.EntitlementException from
+       InvalidParameterException, ThrottlingException
+
+Pass through exceptions:
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+* HTTP_STATUS_CODE: code and exception name as it was provided by the client call

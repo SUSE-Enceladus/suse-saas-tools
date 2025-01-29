@@ -13,7 +13,7 @@ class TestApp:
         assert lambda_handler(event={'some': 'some'}, context=Mock()) == \
             '{"isBase64Encoded": false, "statusCode": 500, ' \
             '"body": {"errors": {"Registration": "KeyError: \'body\'", ' \
-            '"Exception": "App.Error.InitEvent"}}}'
+            '"Exception": "App.Error.InternalServiceErrorException"}}}'
 
     @patch('resolve_customer.app.AWSCustomer')
     def test_lambda_handler_unexpected_error(self, mock_AWSCustomer):
@@ -26,7 +26,7 @@ class TestApp:
         ) == \
             '{"isBase64Encoded": false, "statusCode": 503, "body": ' \
             '{"errors": {"Registration": "OSError: some unexpected error", ' \
-            '"Exception": "App.Error.CSPService"}}}'
+            '"Exception": "App.Error.ServiceUnavailableException"}}}'
 
     @patch('resolve_customer.app.process_event')
     def test_lambda_handler(self, mock_process_event):

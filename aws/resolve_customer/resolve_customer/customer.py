@@ -16,10 +16,12 @@
 # along with mash.  If not, see <http://www.gnu.org/licenses/>
 #
 import boto3
+import urllib.parse
 from botocore.exceptions import ClientError
-# from resolve_customer.error import classify_error
+from resolve_customer.defaults import Defaults
+from resolve_customer.assume_role import AWSAssumeRole
 from resolve_customer.error import (
-    error_record, log_error
+    error_record, log_error, classify_error
 )
 
 
@@ -27,29 +29,51 @@ class AWSCustomer:
     """
     Get AWS customer ID information from a marketplace token
     """
-    def __init__(self, token: str):
+    def __init__(self, urlEncodedtoken: str):
         self.customer = {}
         self.error = {}
-        if token:
+        if urlEncodedtoken:
             try:
-                marketplace = boto3.client('meteringmarketplace')
+                token = urllib.parse.unquote(urlEncodedtoken)
+                assume_role_config = Defaults.get_assume_role_config()
+                assume_role = AWSAssumeRole(
+                    assume_role_config['role']['arn'],
+                    assume_role_config['role']['session']
+                )
+                marketplace = boto3.client(
+                    'meteringmarketplace',
+                    region_name=assume_role_config['role']['region'],
+                    aws_access_key_id=assume_role.get_access_key(),
+                    aws_secret_access_key=assume_role.get_secret_access_key(),
+                    aws_session_token=assume_role.get_session_token()
+                )
                 self.customer = marketplace.resolve_customer(
                     RegistrationToken=token
                 )
             except ClientError as error:
                 self.error = error.response
-                # Custom error code classification: For details see:
-                # https://docs.aws.amazon.com/marketplace/latest/APIReference/API_marketplace-metering_ResolveCustomer.html
-                # If a specific AWS error code needs to be handled as different
-                # HTTP status code, it can be classified as such as follows:
-                #
-                # self.error = classify_error(
-                #     self.error, 'AWS.ResolveCustomer.ExpiredTokenException', 400
-                # )
+                # Classify group of errors into app exception and HTTP code
+                self.error = classify_error(
+                    self.error, 'ExpiredTokenException',
+                    400, 'App.Error.TokenException'
+                )
+                self.error = classify_error(
+                    self.error, 'InvalidTokenException',
+                    400, 'App.Error.TokenException'
+                )
+                self.error = classify_error(
+                    self.error, 'ThrottlingException',
+                    400, 'App.Error.TokenException'
+                )
+                self.error = classify_error(
+                    self.error, 'DisabledApiException',
+                    400, 'App.Error.TokenException'
+                )
                 log_error(self.error)
         else:
             self.error = error_record(
-                422, 'no marketplace token provided', 'EventData'
+                422, 'no marketplace token provided',
+                'MissingTokenException'
             )
             log_error(self.error)
 
