@@ -24,6 +24,7 @@ import logging
 
 import requests
 
+from sqs_event_manager.defaults import Defaults
 from sqs_event_manager.queue import delete_message
 from sqs_event_manager.message import AWSSNSMessage
 from resolve_customer.entitlements import AWSCustomerEntitlement
@@ -117,8 +118,12 @@ def process_message(record: dict, batch_item_failures: dict):
                 'productCode': message.product_code,
                 'entitlements': entitlements.get_entitlements()
             }
-            scc_url = 'https://scc.suse.com/api/cloud/saas/update_entitlement/'
-            resp = requests.post(scc_url, data=request_data)
+
+            sts_event_manager_config = Defaults.get_sqs_event_manager_config()
+            resp = requests.post(
+                sts_event_manager_config['entitlement_change_url'],
+                data=request_data
+            )
             resp.raise_for_status()
         else:
             logger.info(f'Received a message with an unhandled action type: {message.action}')

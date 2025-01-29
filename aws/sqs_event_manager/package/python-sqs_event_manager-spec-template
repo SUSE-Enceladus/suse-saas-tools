@@ -27,12 +27,16 @@ Source:         %{name}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 Requires:       python3 >= 3.11
 Requires:       %{python_module resolve_customer}
+Requires:       %{python_module requests}
+Requires:       %{python_module PyYAML}
 BuildRequires:  python3 >= 3.11
 BuildRequires:  %{python_module devel}
 BuildRequires:  %{python_module setuptools}
 BuildRequires:  %{python_module pip}
 BuildRequires:  %{python_module poetry}
 BuildRequires:  %{python_module resolve_customer}
+BuildRequires:  %{python_module requests}
+BuildRequires:  %{python_module PyYAML}
 BuildRequires:  fdupes
 BuildRequires:  python-rpm-macros
 %python_subpackages
@@ -49,6 +53,7 @@ SaaS tooling for the pubcloud team.
 %install
 %pyproject_install
 %python_expand %fdupes %{buildroot}%{$python_sitelib}
+mkdir -p %{buildroot}/etc
 install -m 755 app_sqs_event_manager.py %{buildroot}/app_sqs_event_manager.py
 
 %files %{python_files}
