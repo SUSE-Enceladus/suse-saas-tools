@@ -55,8 +55,6 @@ REQUEST
           "productCode": "string",
           "entitlements": [
               {
-                  "customerIdentifier": "string",
-                  "productCode": "string",
                   "expirationDate": 123123111231,
                   "dimension": "string",
                   "value": {
