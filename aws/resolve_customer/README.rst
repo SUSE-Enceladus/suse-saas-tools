@@ -23,12 +23,11 @@ RESPONSE
         "isBase64Encoded": false,
         "body": {
             "marketplaceIdentifier": "AWS",
-            "marketplaceAccountId": "CustomerAWSAccountId"
-            "customerIdentifier": "CustomerIdentifier"
+            "marketplaceAccountId": "CustomerAWSAccountId",
+            "customerIdentifier": "CustomerIdentifier",
+            "productCode": "string",
             "entitlements": [
                 {
-                    "customerIdentifier": "string",
-                    "productCode": "string",
                     "expirationDate": 123123111231,
                     "dimension": "string",
                     "value": {

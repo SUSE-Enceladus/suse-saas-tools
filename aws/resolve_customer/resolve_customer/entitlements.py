@@ -69,38 +69,41 @@ class AWSCustomerEntitlement:
             )
             log_error(self.error)
 
-    def get_entitlements(self) -> List[dict]:
-        entitlements = []
+    def get_toplevel_product_code(self) -> str:
+        toplevel_product = ''
         if self.entitlements:
-            for entitelement in self.entitlements['Entitlements']:
-                entitlements.append(
+            entitlements = self.entitlements.get('Entitlements')
+            if entitlements:
+                toplevel_product = entitlements[0].get('ProductCode')
+        return toplevel_product
+
+    def get_entitlements(self) -> List[dict]:
+        result_entitlements: List = []
+        if self.entitlements:
+            entitlements = self.entitlements.get('Entitlements') or []
+            for entitlement in entitlements:
+                result_entitlements.append(
                     {
-                        'customerIdentifier': entitelement.get(
-                            'CustomerIdentifier'
-                        ),
-                        'productCode': entitelement.get(
-                            'ProductCode'
-                        ),
                         'expirationDate': format(
-                            entitelement.get('ExpirationDate')
+                            entitlement.get('ExpirationDate')
                         ),
-                        'dimension': entitelement.get(
+                        'dimension': entitlement.get(
                             'Dimension'
                         ),
                         'value': {
-                            'booleanValue': entitelement['Value'].get(
-                                'BooleanValue'
+                            'booleanValue': bool(
+                                entitlement['Value'].get('BooleanValue')
                             ),
-                            'doubleValue': entitelement['Value'].get(
-                                'DoubleValue'
+                            'doubleValue': float(
+                                entitlement['Value'].get('DoubleValue') or 0
                             ),
-                            'integerValue': entitelement['Value'].get(
-                                'IntegerValue'
+                            'integerValue': int(
+                                entitlement['Value'].get('IntegerValue') or 0
                             ),
-                            'stringValue': entitelement['Value'].get(
-                                'StringValue'
+                            'stringValue': format(
+                                entitlement['Value'].get('StringValue') or ''
                             )
                         }
                     }
                 )
-        return entitlements
+        return result_entitlements

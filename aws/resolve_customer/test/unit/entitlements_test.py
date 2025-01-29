@@ -85,10 +85,8 @@ class TestAWSCustomerEntitlement:
     def test_get_entitlements(self):
         assert self.entitlements.get_entitlements() == [
             {
-                'customerIdentifier': 'id',
                 'dimension': 'some',
                 'expirationDate': 'some',
-                'productCode': 'some',
                 'value': {
                     'booleanValue': True,
                     'doubleValue': 42,
@@ -97,3 +95,6 @@ class TestAWSCustomerEntitlement:
                 }
             }
         ]
+
+    def test_get_toplevel_product_code(self):
+        assert self.entitlements.get_toplevel_product_code() == 'some'
