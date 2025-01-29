@@ -76,12 +76,17 @@ class TestApp:
             []
         )
 
+    @patch('sqs_event_manager.app.requests')
     @patch('sqs_event_manager.app.AWSCustomerEntitlement')
     @patch('sqs_event_manager.app.delete_message')
     def test_process_message(
-        self, mock_delete_message, mock_AWSCustomerEntitlement
+        self,
+        mock_delete_message,
+        mock_AWSCustomerEntitlement,
+        mock_requests
     ):
         entitlements = Mock()
+        entitlements.error = None
         mock_AWSCustomerEntitlement.return_value = entitlements
 
         batch_item_failures = []

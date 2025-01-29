@@ -22,6 +22,8 @@ AWS Metering/Entitlement Marketplace API's
 import json
 import logging
 
+import requests
+
 from sqs_event_manager.queue import delete_message
 from sqs_event_manager.message import AWSSNSMessage
 from resolve_customer.entitlements import AWSCustomerEntitlement
@@ -109,13 +111,15 @@ def process_message(record: dict, batch_item_failures: dict):
                     '{message.product_code}. {entitlements.error}'
                 )
 
-            request = {  # noqa TODO: Cleanup noqa
+            request_data = {
                 'customerIdentifier': message.customer_id,
                 'marketplaceIdentifier': 'AWS',
                 'productCode': message.product_code,
                 'entitlements': entitlements.get_entitlements()
             }
-            # TODO: Send entitlement update request with entitlement info
+            scc_url = 'https://scc.suse.com/api/cloud/saas/update_entitlement/'
+            resp = requests.post(scc_url, data=request_data)
+            resp.raise_for_status()
         else:
             logger.info(f'Received a message with an unhandled action type: {message.action}')
 
