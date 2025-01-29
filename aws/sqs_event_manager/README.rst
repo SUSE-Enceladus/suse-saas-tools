@@ -85,6 +85,12 @@ ERROR RESPONSE
         }
     }
 
-* 500: Internal Server Error
-* 503: Service unavailable, any non AWS ClientException
+Application handled exceptions:
+-------------------------------
+
+* 500: App.Error.InternalServiceErrorException
+
+Pass through exceptions:
+------------------------
+
 * HTTP_STATUS_CODE: HTTP status code as it was provided by the client call
