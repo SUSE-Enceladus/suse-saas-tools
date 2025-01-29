@@ -119,6 +119,7 @@ def process_event(
             'marketplaceIdentifier': 'AWS',
             'marketplaceAccountId': customer.get_account_id(),
             'customerIdentifier': customer.get_id(),
+            "productCode": entitlements.get_toplevel_product_code(),
             'entitlements': entitlements.get_entitlements()
         }
     }
