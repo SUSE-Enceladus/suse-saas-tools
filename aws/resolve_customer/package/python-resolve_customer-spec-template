@@ -50,7 +50,6 @@ SaaS tooling for the pubcloud team.
 %install
 %pyproject_install
 %python_expand %fdupes %{buildroot}%{$python_sitelib}
-mkdir -p %{buildroot}/etc
 install -m 755 app_resolve_customer.py %{buildroot}/app_resolve_customer.py
 
 %files %{python_files}
