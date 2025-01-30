@@ -44,7 +44,7 @@
         <package name="python311-awslambdaric"/>
         <package name="python311-resolve_customer"/>
         <package name="python311-sqs_event_manager"/>
-        <package name="assume_role_setup"/>
+        <package name="suse-saas-setup"/>
     </packages>
     <packages type="delete">
         <package name="python3-base"/>
