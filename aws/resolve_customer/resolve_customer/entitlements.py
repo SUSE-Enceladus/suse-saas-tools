@@ -34,14 +34,12 @@ class AWSCustomerEntitlement:
         self.error = {}
         if customer_id and product_code:
             try:
-                assume_role_config = Defaults.get_assume_role_config()
                 assume_role = AWSAssumeRole(
-                    assume_role_config['role']['arn'],
-                    assume_role_config['role']['session']
+                    Defaults.get_assume_role_config()
                 )
                 marketplace = boto3.client(
                     'marketplace-entitlement',
-                    region_name=assume_role_config['role']['region'],
+                    region_name=assume_role.get_region(),
                     aws_access_key_id=assume_role.get_access_key(),
                     aws_secret_access_key=assume_role.get_secret_access_key(),
                     aws_session_token=assume_role.get_session_token()

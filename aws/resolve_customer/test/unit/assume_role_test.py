@@ -17,6 +17,13 @@ class TestAWSAssumeRole:
 
     @patch('boto3.client')
     def setup_method(self, cls, mock_boto_client):
+        self.config = {
+            'role': {
+                'us-east-1': {
+                    'arn': 'arn:aws:iam::some:role/Some', 'session': 'some'
+                }
+            }
+        }
         self.sts_client = mock_boto_client.return_value
         self.sts_client.assume_role.return_value = {
             'Credentials': {
@@ -32,9 +39,7 @@ class TestAWSAssumeRole:
             'PackedPolicySize': 123,
             'SourceIdentity': 'string'
         }
-        self.assume_role = AWSAssumeRole(
-            'arn:aws:iam::some:role/PCTAccess'
-        )
+        self.assume_role = AWSAssumeRole(self.config)
 
     @patch('boto3.client')
     def test_setup_boto_client_raises(self, mock_boto_client):
@@ -47,9 +52,38 @@ class TestAWSAssumeRole:
             operation_name=MagicMock(),
             error_response=error_response
         )
-        with self._caplog.at_level(logging.INFO):
-            AWSAssumeRole('arn:aws:iam::some:role/PCTAccess')
+        with self._caplog.at_level(logging.ERROR):
+            AWSAssumeRole(self.config)
             assert 'sts client failed' in self._caplog.text
+
+    @patch('boto3.client')
+    def test_no_role_success(self, mock_boto_client):
+        error_response = error_record(
+            400, 'sts client failed'
+        )
+        error_response['Error']['Code'] = \
+            'AccessDeniedException'
+        mock_boto_client.side_effect = ClientError(
+            operation_name=MagicMock(),
+            error_response=error_response
+        )
+        config = {
+            'role': {
+                'us-east-1': {
+                    'arn': 'arn:aws:iam::some1:role/Some', 'session': 'some1'
+                },
+                'eu-central-1': {
+                    'arn': 'arn:aws:iam::some2:role/Some', 'session': 'some2'
+                }
+            }
+        }
+        with self._caplog.at_level(logging.ERROR):
+            role = AWSAssumeRole(config)
+            assert 'sts client failed' in self._caplog.text
+            assert role.error_count == 2
+
+    def test_get_region(self):
+        assert self.assume_role.get_region() == 'us-east-1'
 
     def test_get_access_key(self):
         assert self.assume_role.get_access_key() == 'accesskey'

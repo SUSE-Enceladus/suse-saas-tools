@@ -23,6 +23,6 @@ class Defaults:
     @staticmethod
     def get_assume_role_config(
         config_file: str = '/etc/assume_role.yml'
-    ) -> Dict:
+    ) -> Dict[str, Dict[str, Dict[str, str]]]:
         with open(config_file) as config:
             return yaml.safe_load(config)
