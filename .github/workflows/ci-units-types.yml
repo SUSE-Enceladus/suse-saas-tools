@@ -25,6 +25,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install poetry
       - name: Run unit and type tests
-        run: make -C aws/resolve_customer test
+        run: |
+          make -C aws/resolve_customer test
+          make -C aws/sqs_event_manager test
         env:
           PY_VER: ${{ matrix.python-version }}

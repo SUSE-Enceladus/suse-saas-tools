@@ -27,3 +27,4 @@ jobs:
       - name: Run code checks
         run: |
           make -C aws/resolve_customer check
+          make -C aws/sqs_event_manager check

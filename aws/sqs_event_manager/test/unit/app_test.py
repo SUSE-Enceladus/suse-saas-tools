@@ -1,51 +1,15 @@
-import json
 import logging
+import json
 
 from unittest.mock import (
     Mock, patch
 )
 
+from sqs_event_manager.defaults import Defaults
 from sqs_event_manager.app import (
     lambda_handler, process_message
 )
 from pytest import fixture
-
-message = json.dumps(
-    {
-        'action': 'entitlement-updated',
-        'customer-identifier': 'abc123',
-        'product-code': '7hn1uo40wt6psy10ovxyh4zzn',
-    }
-)
-body = json.dumps(
-    {
-        'Type': 'Notification',
-        'MessageId': '6f4eae69-8205-5531-84f7-f1b478aeb04',
-        'TopicArn': 'arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX',
-        'Message': message,
-        'Timestamp': '2025-01-15 16:31:50',
-        'SignatureVersion': '1',
-        'Signature': 'signature',
-        'SigningCertURL': 'https://cert.com',
-        'UnsubscribeURL': 'https://unsub.com'
-    }
-)
-record = {
-    'messageId': '123',
-    'receiptHandle': 'abc123',
-    'body': body,
-    'attributes': {
-        'ApproximateReceiveCount': '1',
-        'SentTimestamp': '1545082649183',
-        'SenderId': 'abc123',
-        'ApproximateFirstReceiveTimestamp': '1545082649185'
-    },
-    'messageAttributes': {},
-    'md5OfBody': 'md5hash',
-    'eventSource': 'aws:sqs',
-    'eventSourceARN': 'arn:aws:sqs:us-east-1:111122223333:my-queue',
-    'awsRegion': 'us-east-1'
-}
 
 
 class TestApp:
@@ -53,10 +17,52 @@ class TestApp:
     def inject_fixtures(self, caplog):
         self._caplog = caplog
 
+    def setup_method(self, cls):
+        # This record is for testing proper json input.
+        # Please also see the message_test.py test code
+        # which also tests messages as they are received
+        # from SNS published data
+        self.record = {
+            'messageId': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
+            'receiptHandle': 'AQEBZ...',
+            'body': json.dumps(
+                {
+                    "Type": "Notification",
+                    "MessageId": "123",
+                    "TopicArn": "arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX",
+                    "Message": {
+                        "action": "entitlement-updated",
+                        "customer-identifier": "abc123",
+                        "product-code": "7hn1uo40wt6psy10ovxyh4zzn"
+                    },
+                    "Timestamp": "2025-01-15 16:31:50",
+                    "SignatureVersion": "1",
+                    "Signature": "abc123",
+                    "SigningCertURL": "string",
+                    "UnsubscribeURL": "string"
+                }
+            ),
+            'attributes': {
+                'ApproximateReceiveCount': '1',
+                'SentTimestamp': '1738513550582',
+                'SequenceNumber': '18891803542658543872',
+                'MessageGroupId': '586474de88e09',
+                'SenderId': 'AIDA3ZKWXZJCWPK4AZP3G',
+                'MessageDeduplicationId': 'f78f3e796ac0abf15635b400b459bed17fb11608ae77cc95f6f850b165ef2faa',
+                'ApproximateFirstReceiveTimestamp': '1738513550582'
+            },
+            'messageAttributes': {},
+            'md5OfBody': '3f1b30bf45ba94b6a1cee5f9db39f60a',
+            'eventSource': 'aws:sqs',
+            'eventSourceARN': 'arn:aws:sqs:eu-central-1:12345:ms-testing.fifo',
+            'awsRegion': 'eu-central-1'
+        }
+
     def test_lambda_handler_invalid_event(self):
         assert lambda_handler(event={'some': 'some'}, context=Mock()) == \
-            '{\"isBase64Encoded\": false, \"statusCode\": 500, ' \
-            '\"body\": \"KeyError: \'Records\'\"}'
+            "{\"isBase64Encoded\": false, \"statusCode\": 500, \"body\": " \
+            "{\"errors\": {\"SubscriptionEvent\": \"KeyError: 'Records'\", " \
+            "\"Exception\": \"App.Error.InternalServiceErrorException\"}}}"
 
     @patch('sqs_event_manager.app.AWSCustomerEntitlement')
     @patch('sqs_event_manager.app.process_message')
@@ -68,37 +74,48 @@ class TestApp:
         mock_AWSCustomerEntitlement.return_value = entitlements
 
         lambda_handler(
-            event={'Records': [record]},
+            event={'Records': [self.record]},
             context=Mock()
         )
         mock_process_message.assert_called_once_with(
-            record,
-            []
+            self.record
         )
 
     @patch('sqs_event_manager.app.requests')
     @patch('sqs_event_manager.app.AWSCustomerEntitlement')
     @patch('sqs_event_manager.app.delete_message')
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
     def test_process_message(
         self,
+        mock_get_sqs_event_manager_config,
         mock_delete_message,
         mock_AWSCustomerEntitlement,
         mock_requests
     ):
+        record = self.record
+        mock_get_sqs_event_manager_config.return_value = \
+            Defaults.get_sqs_event_manager_config('../data/sqs_event_manager.yml')
         entitlements = Mock()
         entitlements.error = None
         mock_AWSCustomerEntitlement.return_value = entitlements
 
-        batch_item_failures = []
-        process_message(record, batch_item_failures)
-        assert len(batch_item_failures) == 0
+        assert process_message(record) == {
+            'error': False,
+            'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
+            'status': format(mock_requests.post.return_value.status_code)
+        }
+
+        mock_requests.post.side_effect = Exception('some-error')
+        with self._caplog.at_level(logging.ERROR):
+            process_message(record)
+            assert 'some-error' in self._caplog.text
 
         record['body'] = record['body'].replace('entitlement-updated', 'fake-event')
         with self._caplog.at_level(logging.INFO):
-            process_message(record, batch_item_failures)
-            assert 'Received a message with an unhandled action type: fake-event' in self._caplog.text
+            process_message(record)
+            assert 'Action type fake-event: not implemented' in self._caplog.text
 
         record['body'] = record['body'].replace('action', 'actions')
         with self._caplog.at_level(logging.INFO):
-            process_message(record, batch_item_failures)
-            assert 'Received an unknown message:' in self._caplog.text
+            process_message(record)
+            assert 'No action defined in SNS message' in self._caplog.text

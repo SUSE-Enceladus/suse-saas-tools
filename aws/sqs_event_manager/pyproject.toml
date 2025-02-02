@@ -58,6 +58,7 @@ pytest-xdist = "*"
 # type checking
 mypy = ">=0.971"
 types-requests = "*"
+types-PyYAML = "*"
 types-mock = "*"
 
 [tool.poetry.group.style]
