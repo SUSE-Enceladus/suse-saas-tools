@@ -1,6 +1,6 @@
 import logging
 from unittest.mock import (
-    patch, MagicMock
+    patch, MagicMock, Mock
 )
 from pytest import fixture
 from datetime import datetime
@@ -81,6 +81,36 @@ class TestAWSAssumeRole:
             role = AWSAssumeRole(config)
             assert 'sts client failed' in self._caplog.text
             assert role.error_count == 2
+
+    @patch('boto3.client')
+    def test_one_out_of_two_role_success(self, mock_boto_client):
+
+        def assume_role(RoleArn, RoleSessionName):
+            if RoleArn == 'arn:aws:iam::some1:role/Some':
+                return {}
+            else:
+                return {
+                    'Credentials': {
+                        'AccessKeyId': 'some'
+                    }
+                }
+
+        sts_client = Mock()
+        sts_client.assume_role.side_effect = assume_role
+        mock_boto_client.return_value = sts_client
+        config = {
+            'role': {
+                'us-east-1': {
+                    'arn': 'arn:aws:iam::some1:role/Some', 'session': 'some1'
+                },
+                'eu-central-1': {
+                    'arn': 'arn:aws:iam::some2:role/Some', 'session': 'some2'
+                }
+            }
+        }
+        with self._caplog.at_level(logging.ERROR):
+            role = AWSAssumeRole(config)
+            assert role.error_count == 1
 
     def test_get_region(self):
         assert self.assume_role.get_region() == 'us-east-1'

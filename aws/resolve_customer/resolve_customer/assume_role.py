@@ -28,7 +28,7 @@ class AWSAssumeRole:
     """
     def __init__(self, config: Dict[str, Dict[str, Dict[str, str]]]):
         self.role_response = {}
-        self.error = {}
+        self.error: Dict = {}
         self.error_count = 0
         self.region = ''
         role: Dict[str, Dict[str, str]] = config.get('role') or {}
@@ -39,18 +39,27 @@ class AWSAssumeRole:
                     RoleArn=role[region]['arn'],
                     RoleSessionName=role[region]['session']
                 )
-                self.region = region
+                if self.get_access_key():
+                    self.error = {}
+                    self.region = region
+                    break
+                else:
+                    self.error = {
+                        'Error': {
+                            'Message': 'assume_role has no data for {}'.format(
+                                role[region]['arn']
+                            )
+                        }
+                    }
+                    self.error_count += 1
             except ClientError as error:
                 self.error = error.response
                 self.error_count += 1
-            else:
-                self.error = {}
-                return
 
-        # all attempts to access the token service failed
-        # log only the last error as we expect the same reason
+        # log the last error as we expect the same reason
         # for all attempts
-        log_error(self.error)
+        if self.error:
+            log_error(self.error)
 
     def get_region(self) -> str:
         return self.region
