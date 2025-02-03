@@ -3,9 +3,9 @@ AWS SQS Event Manager
 
 The SQS Event Manager reacts on SQS events from a given sns topic.
 The topic of the messages are marketplace entitlement change notifications.
-The manager runs as a Lambda function and handles the events when the come
+The manager runs as a Lambda function and handles the events when they come
 in. The cusomer entitlement data is collected and passed on to the
-API setup in the coniguration file.
+API specified in the coniguration file.
 
 Higlevel Deployment Plan
 ------------------------
@@ -22,13 +22,23 @@ For the deployment the following steps are needed:
    Elastic Container Registry
 
 2. Create an AWS Lambda function from the container URL
-   created in 1. The Lambda has to provide the following
+   created in 1. The Lambda function has to provide the following
    configuration settings:
 
-   * Image -> CMD override -> sqs_event_handler.lambda_handler
+   * Image -> CMD override -> app_sqs_event_manager.lambda_handler
    * Configuration -> Timeout 15sec
 
-3. Edit the IAM policy for the created function at:
+3. Create an SQS queue:
+   
+   This queue will be subscribed to the entitlement change
+   events of the marketplace offer. It will receive SNS
+   event messages when a customer changes entitlement status.
+
+   .. code::
+
+       aws sqs create-queue --queue-name my-queue
+
+4. Edit the IAM policy for the created function at:
 
    .. code::
 
@@ -65,19 +75,31 @@ For the deployment the following steps are needed:
             "Resource": "arn:aws:sqs:us-east-1:123:my-queue"
         }
 
-  This allows the Lambda function to receive and delete messages from
-  the event queue.
+   This allows the Lambda function to receive and delete messages from
+   the event queue.
 
-4. Setup event source mapping from the queue to the Lambda function:
+5. Setup event source mapping from the queue to the Lambda function:
 
-  Run the following command using AWS CLI:
+   Run the following command using AWS CLI:
 
-  .. code::
+   .. code::
 
-      aws lambda create-event-source-mapping \
-        --function-name {name of Lambda function} \
-        --batch-size 10 \
-        --event-source-arn arn:aws:sqs:us-east-1:123:my-queue
+       aws lambda create-event-source-mapping \
+         --function-name {name of Lambda function} \
+         --batch-size 10 \
+         --event-source-arn arn:aws:sqs:us-east-1:123:my-queue
+
+6. Setup networking and/or routing:
+
+   The SQS Event Manager will receive entitlement change messages.
+   It will collect the customer's entitlement data and send a request
+   to the configured API. Any routing or networking necessary to provide
+   access to the API from the SQS Event Manager should be set up.
+
+For more information on triggering Lambda functions using SQS queues
+see the AWS documentation:
+
+https://docs.aws.amazon.com/lambda/latest/dg/with-sqs-example.html
 
 EVENTS
 ------
@@ -119,7 +141,7 @@ The SNS Topics have the following event format:
               "awsRegion": "us-east-1"
           }
       ]
-  }
+   }
 
 REQUEST
 --------
@@ -142,7 +164,7 @@ REQUEST
                   }
               }
           ]
-    }
+      }
 
 ERROR RESPONSE
 --------------
