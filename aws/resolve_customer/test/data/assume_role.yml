@@ -1,4 +1,7 @@
 role:
-  arn: arn:aws:iam::123:role/Some
-  session: some_session_name
-  region: us-east-1
+  us-east-1:
+      arn: arn:aws:iam::123:role/Some
+      session: some_session_name
+  eu-central-1:
+      arn: arn:aws:iam::456:role/SomeOther
+      session: some_session_name

@@ -18,6 +18,7 @@
 import boto3
 from botocore.exceptions import ClientError
 from resolve_customer.error import log_error
+from typing import Dict
 
 
 class AWSAssumeRole:
@@ -25,17 +26,34 @@ class AWSAssumeRole:
     Get access tokens from the token service through the
     assumed role arn of the marketplace account
     """
-    def __init__(self, role_arn: str, session_name: str = 'suse_saas'):
+    def __init__(self, config: Dict[str, Dict[str, Dict[str, str]]]):
         self.role_response = {}
         self.error = {}
-        try:
-            sts_client = boto3.client('sts')
-            self.role_response = sts_client.assume_role(
-                RoleArn=role_arn, RoleSessionName=session_name
-            )
-        except ClientError as error:
-            self.error = error.response
-            log_error(self.error)
+        self.error_count = 0
+        self.region = ''
+        role: Dict[str, Dict[str, str]] = config.get('role') or {}
+        for region in role:
+            try:
+                sts_client = boto3.client('sts')
+                self.role_response = sts_client.assume_role(
+                    RoleArn=role[region]['arn'],
+                    RoleSessionName=role[region]['session']
+                )
+                self.region = region
+            except ClientError as error:
+                self.error = error.response
+                self.error_count += 1
+            else:
+                self.error = {}
+                return
+
+        # all attempts to access the token service failed
+        # log only the last error as we expect the same reason
+        # for all attempts
+        log_error(self.error)
+
+    def get_region(self) -> str:
+        return self.region
 
     def get_access_key(self) -> str:
         return self.__get('AccessKeyId')
