@@ -28,35 +28,50 @@ from sqs_event_manager.defaults import Defaults
 from sqs_event_manager.queue import delete_message
 from sqs_event_manager.message import AWSSNSMessage
 from resolve_customer.entitlements import AWSCustomerEntitlement
+from resolve_customer.error import (
+    error_record, error_response
+)
+from typing import (
+    Dict, Union
+)
 
 logger = logging.getLogger('sqs_event_manager')
 logger.setLevel('INFO')
+
+# Topic name for this lambda
+topic = 'SubscriptionEvent'
 
 
 def lambda_handler(event, context):
     """
     Expects event type matching the SNS topic
 
+    Example SNS raw message
+
+    {
+        "action": "entitlement-updated",
+        "customer-identifier": "Some",
+        "product-code": "Some"
+    }
+
+    Example SQS event
+
     {
         'Records': [
             {
                 'message_id': 'str',
                 'receipt_handle': 'str',
-                'body': {
+                'body': json.dumps({
                     'Type' : 'str',
                     'MessageId : 'str',
                     'TopicArn' : 'str',
-                    'Message' : {
-                        'action': 'str',
-                        'customer-identifier': 'str',
-                        'product-code': 'str',
-                    },
+                    'Message' : 'SNS raw message quoted text',
                     'Timestamp' : 'str',
                     'SignatureVersion' : 'str',
                     'Signature' : 'str',
                     'SigningCertURL' : 'str',
                     'UnsubscribeURL' : 'str'
-                },
+                }),
                 'attributes': {
                     'ApproximateReceiveCount': 'str',
                     'SentTimestamp': 'str',
@@ -72,72 +87,86 @@ def lambda_handler(event, context):
         ]
     }
     """
-    batch_item_failures = []
-    sqs_batch_response = {}
-
     try:
+        logger.info(f'EVENT: {event}')
+        logger.info(f'CONTEXT: {context}')
+        sqs_batch_response = {
+            'batchItemFailures': []
+        }
         for message in event['Records']:
-            process_message(message, batch_item_failures)
+            sqs_batch_response['batchItemFailures'].append(
+                process_message(message)
+            )
+        return json.dumps(
+            {
+                'isBase64Encoded': False,
+                'statusCode': 200,
+                'body': sqs_batch_response
+            }
+        )
     except Exception as error:
         return json.dumps(
-            error_response(500, f'{type(error).__name__}: {error}')
+            error_response(
+                error_record(
+                    500, f'{type(error).__name__}: {error}',
+                    'InternalServiceErrorException'
+                ), topic
+            )
         )
 
-    sqs_batch_response['batchItemFailures'] = batch_item_failures
-    return json.dumps(sqs_batch_response)
 
-
-def process_message(record: dict, batch_item_failures: dict):
+def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
     """
     Handle message received from SQS queue
 
-    Ensure the message is proper format. Get the customer entitlements and
-    send the information to the SCC service.
+    Ensure the message is proper format. Get the customer
+    entitlements and send the information to the SCC service.
     """
+    result = {
+        'itemIdentifier': record.get('messageId') or 'unknown',
+        'status': 'unknown',
+        'error': True
+    }
     try:
         message = AWSSNSMessage(record)
-
         if not message.action:
-            logger.info(f'Received an unknown message: {json.dumps(record)}')
+            result['status'] = 'No action defined in SNS message'
+            logger.error(result['status'])
         elif message.action == 'entitlement-updated':
             # Notify SCC of customer entitlement change for the given product
-            entitlements = AWSCustomerEntitlement(
-                message.customer_id,
-                message.product_code
-            )
-            if entitlements.error:
-                raise Exception(
-                    'Exception getting entitlements for customer '
-                    f'{message.customer_id} and product '
-                    '{message.product_code}. {entitlements.error}'
+            customer_id = message.customer_id
+            product_code = message.product_code
+            logger.info(
+                'requesting entitlements for customer {} and product {}'.format(
+                    customer_id, product_code
                 )
-
+            )
+            entitlements = AWSCustomerEntitlement(
+                customer_id, product_code
+            )
             request_data = {
-                'customerIdentifier': message.customer_id,
+                'customerIdentifier': customer_id,
                 'marketplaceIdentifier': 'AWS',
-                'productCode': message.product_code,
+                'productCode': product_code,
                 'entitlements': entitlements.get_entitlements()
             }
-
             sts_event_manager_config = Defaults.get_sqs_event_manager_config()
-            resp = requests.post(
+            http_post_response = requests.post(
                 sts_event_manager_config['entitlement_change_url'],
                 data=request_data
             )
-            resp.raise_for_status()
+            http_post_response.raise_for_status()
+            result['status'] = format(http_post_response.status_code)
+            result['error'] = False
         else:
-            logger.info(f'Received a message with an unhandled action type: {message.action}')
+            result['status'] = f'Action type {message.action}: not implemented'
+            logger.error(result['status'])
 
         # Always clean up message except on failure
-        delete_message(message.event_source_arn, message.receipt_handle)
+        delete_message(
+            message.event_source_arn, message.receipt_handle
+        )
     except Exception as error:
-        logger.error(f'Exception processing message {message.receipt_handle}: {error}')
-        batch_item_failures.append({'itemIdentifier': message.message_id})
-
-
-def error_response(status_code: int, message: str) -> dict:
-    return {
-        'isBase64Encoded': False,
-        'statusCode': status_code,
-        'body': message
-    }
+        result['status'] = f'{type(error).__name__}: {error}'
+        logger.error(result['status'])
+    return result

@@ -16,21 +16,22 @@
 # along with mash.  If not, see <http://www.gnu.org/licenses/>
 #
 import json
-import logging
-
-logger = logging.getLogger('sqs_event_manager')
-logger.setLevel('INFO')
+from typing import Dict
 
 
 class AWSSNSMessage:
-    def __init__(self, message: dict):
+    def __init__(self, message: Dict):
         self.message = message
+        self.body = json.loads(self.__get('body'))
 
-    def get_body(self) -> str:
-        return json.loads(self.__get('body'))
-
-    def get_sns_content(self) -> str:
-        return json.loads(self.get_body()['Message']) or {}
+    def get_sns_content(self) -> Dict:
+        message = self.body.get('Message') or {}
+        if isinstance(message, dict):
+            # message content is a dictionary already
+            return message
+        else:
+            # message content is still a json string
+            return json.loads(message.replace(' ', ''))
 
     @property
     def message_id(self) -> str:
@@ -38,15 +39,15 @@ class AWSSNSMessage:
 
     @property
     def customer_id(self) -> str:
-        return self.get_sns_content().get('customer-identifier')
+        return self.get_sns_content().get('customer-identifier') or ''
 
     @property
     def product_code(self) -> str:
-        return self.get_sns_content().get('product-code')
+        return self.get_sns_content().get('product-code') or ''
 
     @property
     def action(self) -> str:
-        return self.get_sns_content().get('action')
+        return self.get_sns_content().get('action') or ''
 
     @property
     def event_source_arn(self) -> str:
