@@ -38,7 +38,20 @@ For the deployment the following steps are needed:
 
        aws sqs create-queue --queue-name my-queue
 
-4. Edit the IAM policy for the created function at:
+4. Subscribe the SQS queue to the SNS topic:
+
+   With the queue created it can be subscribed to the SNS topic
+   ARN of the marketplace offer. This will send the entitlement
+   change events to the queue.
+
+   .. code::
+
+       aws sns subscribe \
+           --topic-arn arn:aws:sns:us-east-1:<account id>:aws-mp-entitlement-notification-<product code> \
+           --protocol sqs
+           --notification-endpoint arn:aws:sqs:us-east-1:123:my-queue
+
+5. Edit the IAM policy for the created function at:
 
    .. code::
 
@@ -78,7 +91,7 @@ For the deployment the following steps are needed:
    This allows the Lambda function to receive and delete messages from
    the event queue.
 
-5. Setup event source mapping from the queue to the Lambda function:
+6. Setup event source mapping from the queue to the Lambda function:
 
    Run the following command using AWS CLI:
 
@@ -89,7 +102,7 @@ For the deployment the following steps are needed:
          --batch-size 10 \
          --event-source-arn arn:aws:sqs:us-east-1:123:my-queue
 
-6. Setup networking and/or routing:
+7. Setup networking and/or routing:
 
    The SQS Event Manager will receive entitlement change messages.
    It will collect the customer's entitlement data and send a request
