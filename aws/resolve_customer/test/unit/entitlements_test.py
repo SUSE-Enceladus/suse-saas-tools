@@ -1,6 +1,6 @@
 import logging
 from unittest.mock import (
-    patch, MagicMock
+    patch, MagicMock, call
 )
 from pytest import fixture
 
@@ -48,7 +48,7 @@ class TestAWSCustomerEntitlement:
         self.entitlements = AWSCustomerEntitlement('id', 'product')
         mock_boto_client.assert_called_once_with(
             'marketplace-entitlement',
-            region_name=assume_role.get_region.return_value,
+            region_name='eu-central-1',
             aws_access_key_id=assume_role.get_access_key.return_value,
             aws_secret_access_key=assume_role.get_secret_access_key.return_value,
             aws_session_token=assume_role.get_session_token.return_value
@@ -63,24 +63,49 @@ class TestAWSCustomerEntitlement:
     ):
         with self._caplog.at_level(logging.INFO):
             AWSCustomerEntitlement('', '')
-            assert 'no customer_id and/or product_code' in self._caplog.text
+            assert 'no customer_id/product_code and/or role' in self._caplog.text
 
     @patch('boto3.client')
     @patch('resolve_customer.entitlements.Defaults.get_assume_role_config')
     @patch('resolve_customer.entitlements.AWSAssumeRole')
+    @patch('resolve_customer.entitlements.log_error')
     def test_setup_boto_client_raises(
-        self, mock_AWSAssumeRole, mock_get_assume_role_config,
-        mock_boto_client
+        self, mock_log_error, mock_AWSAssumeRole,
+        mock_get_assume_role_config, mock_boto_client
     ):
+        mock_get_assume_role_config.return_value = role_config
         mock_boto_client.side_effect = ClientError(
             operation_name=MagicMock(),
             error_response=error_record(
                 400, 'marketplace-entitlement client failed'
             )
         )
-        with self._caplog.at_level(logging.INFO):
+        with self._caplog.at_level(logging.ERROR):
             AWSCustomerEntitlement('id', 'product')
-            assert 'marketplace-entitlement client failed' in self._caplog.text
+        assert mock_log_error.call_args_list == [
+            call(
+                {
+                    'ResponseMetadata': {
+                        'HTTPStatusCode': 400
+                    },
+                    'Error': {
+                        'Message': 'marketplace-entitlement client failed',
+                        'Code': 'App.Error.Unknown'
+                    }
+                }
+            ),
+            call(
+                {
+                    'ResponseMetadata': {
+                        'HTTPStatusCode': 400
+                    },
+                    'Error': {
+                        'Message': 'marketplace-entitlement client failed',
+                        'Code': 'App.Error.Unknown'
+                    }
+                }
+            )
+        ]
 
     def test_get_entitlements(self):
         assert self.entitlements.get_entitlements() == [

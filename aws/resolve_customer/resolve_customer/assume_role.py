@@ -16,9 +16,6 @@
 # along with mash.  If not, see <http://www.gnu.org/licenses/>
 #
 import boto3
-from botocore.exceptions import ClientError
-from resolve_customer.error import log_error
-from typing import Dict
 
 
 class AWSAssumeRole:
@@ -26,43 +23,13 @@ class AWSAssumeRole:
     Get access tokens from the token service through the
     assumed role arn of the marketplace account
     """
-    def __init__(self, config: Dict[str, Dict[str, Dict[str, str]]]):
+    def __init__(self, role_arn, session_name):
         self.role_response = {}
-        self.error: Dict = {}
-        self.error_count = 0
-        self.region = ''
-        role: Dict[str, Dict[str, str]] = config.get('role') or {}
-        for region in role:
-            try:
-                sts_client = boto3.client('sts')
-                self.role_response = sts_client.assume_role(
-                    RoleArn=role[region]['arn'],
-                    RoleSessionName=role[region]['session']
-                )
-                if self.get_access_key():
-                    self.error = {}
-                    self.region = region
-                    break
-                else:
-                    self.error = {
-                        'Error': {
-                            'Message': 'assume_role has no data for {}'.format(
-                                role[region]['arn']
-                            )
-                        }
-                    }
-                    self.error_count += 1
-            except ClientError as error:
-                self.error = error.response
-                self.error_count += 1
-
-        # log the last error as we expect the same reason
-        # for all attempts
-        if self.error:
-            log_error(self.error)
-
-    def get_region(self) -> str:
-        return self.region
+        sts_client = boto3.client('sts')
+        self.role_response = sts_client.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName=session_name
+        )
 
     def get_access_key(self) -> str:
         return self.__get('AccessKeyId')

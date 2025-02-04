@@ -22,7 +22,9 @@ from resolve_customer.assume_role import AWSAssumeRole
 from resolve_customer.error import (
     error_record, log_error, classify_error
 )
-from typing import List
+from typing import (
+    List, Dict
+)
 
 
 class AWSCustomerEntitlement:
@@ -31,38 +33,51 @@ class AWSCustomerEntitlement:
     """
     def __init__(self, customer_id: str, product_code: str):
         self.entitlements = {}
-        self.error = {}
-        if customer_id and product_code:
-            try:
-                assume_role = AWSAssumeRole(
-                    Defaults.get_assume_role_config()
-                )
-                marketplace = boto3.client(
-                    'marketplace-entitlement',
-                    region_name=assume_role.get_region(),
-                    aws_access_key_id=assume_role.get_access_key(),
-                    aws_secret_access_key=assume_role.get_secret_access_key(),
-                    aws_session_token=assume_role.get_session_token()
-                )
-                self.entitlements = marketplace.get_entitlements(
-                    ProductCode=product_code,
-                    Filter={'CUSTOMER_IDENTIFIER': [customer_id]}
-                )
-            except ClientError as error:
-                self.error = error.response
-                # Classify group of errors into app exception and HTTP code
-                self.error = classify_error(
-                    self.error, 'InvalidParameterException',
-                    400, 'App.Error.EntitlementException'
-                )
-                self.error = classify_error(
-                    self.error, 'ThrottlingException',
-                    400, 'App.Error.EntitlementException'
-                )
-                log_error(self.error)
+        self.error: Dict = {}
+        self.error_list: List[Dict] = []
+        config = Defaults.get_assume_role_config()
+        role: Dict[str, Dict[str, str]] = config.get('role') or {}
+        if customer_id and product_code and role:
+            for region in sorted(role.keys()):
+                try:
+                    assume_role = AWSAssumeRole(
+                        role[region]['arn'], role[region]['session']
+                    )
+                    marketplace = boto3.client(
+                        'marketplace-entitlement',
+                        region_name=region,
+                        aws_access_key_id=assume_role.get_access_key(),
+                        aws_secret_access_key=assume_role.get_secret_access_key(),
+                        aws_session_token=assume_role.get_session_token()
+                    )
+                    self.entitlements = marketplace.get_entitlements(
+                        ProductCode=product_code,
+                        Filter={'CUSTOMER_IDENTIFIER': [customer_id]}
+                    )
+                    # success, clear all errors that happened so far
+                    # and return from the constructor in this state
+                    self.error = {}
+                    self.error_list = []
+                    return
+                except ClientError as error:
+                    self.error = error.response
+                    # Classify group of errors into app exception and HTTP code
+                    self.error = classify_error(
+                        self.error, 'InvalidParameterException',
+                        400, 'App.Error.EntitlementException'
+                    )
+                    self.error = classify_error(
+                        self.error, 'ThrottlingException',
+                        400, 'App.Error.EntitlementException'
+                    )
+                    self.error_list.append(self.error)
+
+            # All attempts failed, log errors
+            for issue in self.error_list:
+                log_error(issue)
         else:
             self.error = error_record(
-                500, 'no customer_id and/or product_code provided',
+                500, 'no customer_id/product_code and/or role provided',
                 'InternalServiceErrorException'
             )
             log_error(self.error)

@@ -36,7 +36,7 @@ class TestAWSCustomer:
         self.customer = AWSCustomer('token')
         mock_boto_client.assert_called_once_with(
             'meteringmarketplace',
-            region_name=assume_role.get_region.return_value,
+            region_name='eu-central-1',
             aws_access_key_id=assume_role.get_access_key.return_value,
             aws_secret_access_key=assume_role.get_secret_access_key.return_value,
             aws_session_token=assume_role.get_session_token.return_value
@@ -45,13 +45,26 @@ class TestAWSCustomer:
     @patch('boto3.client')
     @patch('resolve_customer.customer.Defaults.get_assume_role_config')
     @patch('resolve_customer.customer.AWSAssumeRole')
-    def test_setup_incomplete(
+    def test_setup_incomplete_no_token(
         self, mock_AWSAssumeRole, mock_get_assume_role_config,
         mock_boto_client
     ):
-        with self._caplog.at_level(logging.INFO):
+        mock_get_assume_role_config.return_value = role_config
+        with self._caplog.at_level(logging.ERROR):
             AWSCustomer('')
             assert 'no marketplace token provided' in self._caplog.text
+
+    @patch('boto3.client')
+    @patch('resolve_customer.customer.Defaults.get_assume_role_config')
+    @patch('resolve_customer.customer.AWSAssumeRole')
+    def test_setup_incomplete_invalid_configuration(
+        self, mock_AWSAssumeRole, mock_get_assume_role_config,
+        mock_boto_client
+    ):
+        mock_get_assume_role_config.return_value = {}
+        with self._caplog.at_level(logging.ERROR):
+            AWSCustomer('some-token')
+            assert 'no role provided' in self._caplog.text
 
     @patch('boto3.client')
     @patch('resolve_customer.customer.Defaults.get_assume_role_config')
@@ -60,6 +73,7 @@ class TestAWSCustomer:
         self, mock_AWSAssumeRole, mock_get_assume_role_config,
         mock_boto_client
     ):
+        mock_get_assume_role_config.return_value = role_config
         error_response = error_record(
             400, 'meteringmarketplace client failed'
         )
