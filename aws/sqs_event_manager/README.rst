@@ -1,7 +1,7 @@
 AWS SQS Event Manager
 ---------------------
 
-The SQS Event Manager reacts on SQS events from a given sns topic.
+The SQS Event Manager reacts on SQS events from a given SNS topic.
 The topic of the messages are marketplace entitlement change notifications.
 The manager runs as a Lambda function and handles the events when they come
 in. The cusomer entitlement data is collected and passed on to the
