@@ -151,11 +151,12 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
                 'entitlements': entitlements.get_entitlements()
             }
             sqs_event_manager_config = Defaults.get_sqs_event_manager_config()
-            auth_token = sqs_event_manager_config['auth_token']
             headers = {
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {auth_token}'
+                'Content-Type': 'application/json'
             }
+            auth_token = sqs_event_manager_config.get('auth_token')
+            if auth_token:
+                headers['Authorization'] = f'Bearer {auth_token}'
             http_post_response = requests.post(
                 sqs_event_manager_config['entitlement_change_url'],
                 data=request_data,
