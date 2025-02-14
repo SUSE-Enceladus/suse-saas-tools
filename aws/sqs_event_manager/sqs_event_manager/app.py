@@ -150,10 +150,17 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
                 'productCode': product_code,
                 'entitlements': entitlements.get_entitlements()
             }
-            sts_event_manager_config = Defaults.get_sqs_event_manager_config()
+            sqs_event_manager_config = Defaults.get_sqs_event_manager_config()
+            headers = {
+                'Content-Type': 'application/json'
+            }
+            auth_token = sqs_event_manager_config.get('auth_token')
+            if auth_token:
+                headers['Authorization'] = f'Bearer {auth_token}'
             http_post_response = requests.post(
-                sts_event_manager_config['entitlement_change_url'],
-                data=request_data
+                sqs_event_manager_config['entitlement_change_url'],
+                data=request_data,
+                headers=headers
             )
             http_post_response.raise_for_status()
             result['status'] = format(http_post_response.status_code)

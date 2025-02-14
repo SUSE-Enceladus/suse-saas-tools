@@ -22,6 +22,9 @@ class TestApp:
         # Please also see the message_test.py test code
         # which also tests messages as they are received
         # from SNS published data
+        self.config = Defaults.get_sqs_event_manager_config(
+            '../data/sqs_event_manager.yml'
+        )
         self.record = {
             'messageId': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
             'receiptHandle': 'AQEBZ...',
@@ -93,8 +96,7 @@ class TestApp:
         mock_requests
     ):
         record = self.record
-        mock_get_sqs_event_manager_config.return_value = \
-            Defaults.get_sqs_event_manager_config('../data/sqs_event_manager.yml')
+        mock_get_sqs_event_manager_config.return_value = self.config
         entitlements = Mock()
         entitlements.error = None
         mock_AWSCustomerEntitlement.return_value = entitlements
@@ -104,16 +106,32 @@ class TestApp:
             'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
             'status': format(mock_requests.post.return_value.status_code)
         }
+        mock_requests.post.assert_called_once_with(
+            'https://inform-me-of-changes.com',
+            data={
+                'customerIdentifier': 'abc123',
+                'marketplaceIdentifier': 'AWS',
+                'productCode': '7hn1uo40wt6psy10ovxyh4zzn',
+                'entitlements': entitlements.get_entitlements.return_value,
+            },
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer some'
+            }
+        )
 
         mock_requests.post.side_effect = Exception('some-error')
         with self._caplog.at_level(logging.ERROR):
             process_message(record)
             assert 'some-error' in self._caplog.text
 
-        record['body'] = record['body'].replace('entitlement-updated', 'fake-event')
+        record['body'] = record['body'].replace(
+            'entitlement-updated', 'fake-event'
+        )
         with self._caplog.at_level(logging.INFO):
             process_message(record)
-            assert 'Action type fake-event: not implemented' in self._caplog.text
+            assert 'Action type fake-event: not implemented' in \
+                self._caplog.text
 
         record['body'] = record['body'].replace('action', 'actions')
         with self._caplog.at_level(logging.INFO):
