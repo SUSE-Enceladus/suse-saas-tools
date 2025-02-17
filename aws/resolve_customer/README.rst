@@ -75,21 +75,6 @@ For the deployment the following steps are needed:
    of the SUSE SaaS toolchain matches with the HTTP status code
    of the Gateway response
 
-   Create a new parameter mapping to manage the content type:
-
-   .. code::
-
-       Mapping Type: Incoming requests
-       Parameter to modify: header.content-type
-       Modification type: Remove
-
-   The API Gateway manages the content-type of the incoming request
-   in different ways. Our code expects that the request to the
-   AWS lambda function uses application/json which is the default
-   setting of the gateway. To prevent the lambda event body to
-   contain an unexpected data format the header.content-type is
-   removed.
-
 POST
 ----
 Through AWS API Gateway

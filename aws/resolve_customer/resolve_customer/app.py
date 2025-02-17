@@ -78,7 +78,8 @@ def lambda_handler(event, context):
         logger.info(f'CONTEXT: {context}')
         event_body = event['body']
         if event.get('isBase64Encoded'):
-            event_body = json.loads(base64.b64decode(event_body))
+            event_body = base64.b64decode(event_body)
+        event_body = json.loads(event_body)
         return json.dumps(
             process_event(event_body.get('registrationToken'))
         )
