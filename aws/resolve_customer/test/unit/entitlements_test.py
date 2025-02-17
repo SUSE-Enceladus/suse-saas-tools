@@ -48,7 +48,7 @@ class TestAWSCustomerEntitlement:
         self.entitlements = AWSCustomerEntitlement('id', 'product')
         mock_boto_client.assert_called_once_with(
             'marketplace-entitlement',
-            region_name='eu-central-1',
+            region_name='us-east-1',
             aws_access_key_id=assume_role.get_access_key.return_value,
             aws_secret_access_key=assume_role.get_secret_access_key.return_value,
             aws_session_token=assume_role.get_session_token.return_value

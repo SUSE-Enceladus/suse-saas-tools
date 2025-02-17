@@ -45,7 +45,7 @@ class AWSCustomerEntitlement:
                     )
                     marketplace = boto3.client(
                         'marketplace-entitlement',
-                        region_name=region,
+                        region_name='us-east-1',
                         aws_access_key_id=assume_role.get_access_key(),
                         aws_secret_access_key=assume_role.get_secret_access_key(),
                         aws_session_token=assume_role.get_session_token()
