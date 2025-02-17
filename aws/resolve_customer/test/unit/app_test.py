@@ -93,7 +93,7 @@ class TestApp:
                 'marketplaceIdentifier': 'AWS',
                 'marketplaceAccountId': customer.get_account_id.return_value,
                 'customerIdentifier': customer.get_id.return_value,
-                'productCode': entitlements.get_toplevel_product_code.return_value,
+                'productCode': customer.get_product_code.return_value,
                 'entitlements': entitlements.get_entitlements.return_value
             }
         }

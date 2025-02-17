@@ -120,6 +120,3 @@ class TestAWSCustomerEntitlement:
                 }
             }
         ]
-
-    def test_get_toplevel_product_code(self):
-        assert self.entitlements.get_toplevel_product_code() == 'some'

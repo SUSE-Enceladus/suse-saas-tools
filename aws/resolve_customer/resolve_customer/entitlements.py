@@ -82,14 +82,6 @@ class AWSCustomerEntitlement:
             )
             log_error(self.error)
 
-    def get_toplevel_product_code(self) -> str:
-        toplevel_product = ''
-        if self.entitlements:
-            entitlements = self.entitlements.get('Entitlements')
-            if entitlements:
-                toplevel_product = entitlements[0].get('ProductCode')
-        return toplevel_product
-
     def get_entitlements(self) -> List[dict]:
         result_entitlements: List = []
         if self.entitlements:
