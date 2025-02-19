@@ -65,7 +65,7 @@ def lambda_handler(event, context):
                     'Type' : 'str',
                     'MessageId : 'str',
                     'TopicArn' : 'str',
-                    'Message' : 'SNS raw message quoted text',
+                    'Message' : 'SNS raw message quoted json text',
                     'Timestamp' : 'str',
                     'SignatureVersion' : 'str',
                     'Signature' : 'str',
@@ -133,38 +133,9 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
             result['status'] = 'No action defined in SNS message'
             logger.error(result['status'])
         elif message.action == 'entitlement-updated':
-            # Notify SCC of customer entitlement change for the given product
-            customer_id = message.customer_id
-            product_code = message.product_code
-            logger.info(
-                'requesting entitlements for customer {} and product {}'.format(
-                    customer_id, product_code
-                )
+            result.update(
+                send_to_scc(entitlement_updated(message))
             )
-            entitlements = AWSCustomerEntitlement(
-                customer_id, product_code
-            )
-            request_data = {
-                'customerIdentifier': customer_id,
-                'marketplaceIdentifier': 'AWS',
-                'productCode': product_code,
-                'entitlements': entitlements.get_entitlements()
-            }
-            sqs_event_manager_config = Defaults.get_sqs_event_manager_config()
-            headers = {
-                'Content-Type': 'application/json'
-            }
-            auth_token = sqs_event_manager_config.get('auth_token')
-            if auth_token:
-                headers['Authorization'] = f'Bearer {auth_token}'
-            http_post_response = requests.post(
-                sqs_event_manager_config['entitlement_change_url'],
-                data=request_data,
-                headers=headers
-            )
-            http_post_response.raise_for_status()
-            result['status'] = format(http_post_response.status_code)
-            result['error'] = False
         else:
             result['status'] = f'Action type {message.action}: not implemented'
             logger.error(result['status'])
@@ -177,3 +148,43 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
         result['status'] = f'{type(error).__name__}: {error}'
         logger.error(result['status'])
     return result
+
+
+def entitlement_updated(message: AWSSNSMessage) -> Dict:
+    """
+    Notify SCC of customer entitlement change for the given product
+    """
+    entitlements = AWSCustomerEntitlement(
+        message.customer_id, message.product_code
+    )
+    request_data = {
+        'customerIdentifier': message.customer_id,
+        'marketplaceIdentifier': 'AWS',
+        'productCode': message.product_code,
+        'entitlements': entitlements.get_entitlements()
+    }
+    return request_data
+
+
+def send_to_scc(request_data: Dict) -> Dict:
+    """
+    Send POST request with notification data to SCC.
+    The method raises an exception of request failure
+    """
+    sqs_event_manager_config = Defaults.get_sqs_event_manager_config()
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    auth_token = sqs_event_manager_config.get('auth_token')
+    if auth_token:
+        headers['Authorization'] = f'Bearer {auth_token}'
+    http_post_response = requests.post(
+        sqs_event_manager_config['entitlement_change_url'],
+        data=request_data,
+        headers=headers
+    )
+    http_post_response.raise_for_status()
+    return {
+        'status': format(http_post_response.status_code),
+        'error': False
+    }
