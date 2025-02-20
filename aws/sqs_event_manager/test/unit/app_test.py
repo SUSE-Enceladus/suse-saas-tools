@@ -25,26 +25,93 @@ class TestApp:
         self.config = Defaults.get_sqs_event_manager_config(
             '../data/sqs_event_manager.yml'
         )
+        self.entitlement_updated = {
+            "Type": "Notification",
+            "MessageId": "123",
+            "TopicArn": "arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX",
+            "Message": {
+                "action": "entitlement-updated",
+                "customer-identifier": "abc123",
+                "product-code": "7hn1uo40wt6psy10ovxyh4zzn"
+            },
+            "Timestamp": "2025-01-15 16:31:50",
+            "SignatureVersion": "1",
+            "Signature": "abc123",
+            "SigningCertURL": "string",
+            "UnsubscribeURL": "string"
+        }
+        self.subscribe_success = {
+            "Type": "Notification",
+            "MessageId": "123",
+            "TopicArn": "arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX",
+            "Message": {
+                "action": "subscribe-success",
+                "customer-identifier": "abc123",
+                "product-code": "7hn1uo40wt6psy10ovxyh4zzn",
+                "offer-identifier": "offer-abcexample123",
+                "isFreeTrialTermPresent": "true"
+            },
+            "Timestamp": "2025-01-15 16:31:50",
+            "SignatureVersion": "1",
+            "Signature": "abc123",
+            "SigningCertURL": "string",
+            "UnsubscribeURL": "string"
+        }
+        self.unsubscribe_pending = {
+            "Type": "Notification",
+            "MessageId": "123",
+            "TopicArn": "arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX",
+            "Message": {
+                "action": "unsubscribe-pending",
+                "customer-identifier": "abc123",
+                "product-code": "7hn1uo40wt6psy10ovxyh4zzn",
+                "offer-identifier": "offer-abcexample123",
+                "isFreeTrialTermPresent": "true"
+            },
+            "Timestamp": "2025-01-15 16:31:50",
+            "SignatureVersion": "1",
+            "Signature": "abc123",
+            "SigningCertURL": "string",
+            "UnsubscribeURL": "string"
+        }
+        self.unsubscribe_success = {
+            "Type": "Notification",
+            "MessageId": "123",
+            "TopicArn": "arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX",
+            "Message": {
+                "action": "unsubscribe-success",
+                "customer-identifier": "abc123",
+                "product-code": "7hn1uo40wt6psy10ovxyh4zzn",
+                "offer-identifier": "offer-abcexample123",
+                "isFreeTrialTermPresent": "true"
+            },
+            "Timestamp": "2025-01-15 16:31:50",
+            "SignatureVersion": "1",
+            "Signature": "abc123",
+            "SigningCertURL": "string",
+            "UnsubscribeURL": "string"
+        }
+        self.subscribe_fail = {
+            "Type": "Notification",
+            "MessageId": "123",
+            "TopicArn": "arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX",
+            "Message": {
+                "action": "subscribe-fail",
+                "customer-identifier": "abc123",
+                "product-code": "7hn1uo40wt6psy10ovxyh4zzn",
+                "offer-identifier": "offer-abcexample123",
+                "isFreeTrialTermPresent": "true"
+            },
+            "Timestamp": "2025-01-15 16:31:50",
+            "SignatureVersion": "1",
+            "Signature": "abc123",
+            "SigningCertURL": "string",
+            "UnsubscribeURL": "string"
+        }
         self.record = {
             'messageId': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
             'receiptHandle': 'AQEBZ...',
-            'body': json.dumps(
-                {
-                    "Type": "Notification",
-                    "MessageId": "123",
-                    "TopicArn": "arn:aws:sns:us-east-1:XXX:aws-mp-entitlement-notification-XXX",
-                    "Message": {
-                        "action": "entitlement-updated",
-                        "customer-identifier": "abc123",
-                        "product-code": "7hn1uo40wt6psy10ovxyh4zzn"
-                    },
-                    "Timestamp": "2025-01-15 16:31:50",
-                    "SignatureVersion": "1",
-                    "Signature": "abc123",
-                    "SigningCertURL": "string",
-                    "UnsubscribeURL": "string"
-                }
-            ),
+            'body': json.dumps(self.entitlement_updated),
             'attributes': {
                 'ApproximateReceiveCount': '1',
                 'SentTimestamp': '1738513550582',
@@ -120,13 +187,32 @@ class TestApp:
             }
         )
 
+        record['body'] = json.dumps(self.unsubscribe_pending)
+        assert process_message(record) == {
+            'error': False,
+            'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
+            'status': 'Action to unsubscribe-pending not handled by SCC'
+        }
+
+        for action in [
+            self.unsubscribe_success,
+            self.subscribe_fail,
+            self.subscribe_success
+        ]:
+            record['body'] = json.dumps(action)
+            assert process_message(record) == {
+                'error': False,
+                'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
+                'status': format(mock_requests.post.return_value.status_code)
+            }
+
         mock_requests.post.side_effect = Exception('some-error')
         with self._caplog.at_level(logging.ERROR):
             process_message(record)
             assert 'some-error' in self._caplog.text
 
         record['body'] = record['body'].replace(
-            'entitlement-updated', 'fake-event'
+            'subscribe-success', 'fake-event'
         )
         with self._caplog.at_level(logging.INFO):
             process_message(record)

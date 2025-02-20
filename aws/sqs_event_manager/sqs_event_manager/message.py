@@ -50,6 +50,14 @@ class AWSSNSMessage:
         return self.get_sns_content().get('action') or ''
 
     @property
+    def offer_id(self) -> str:
+        return self.get_sns_content().get('offer-identifier') or ''
+
+    @property
+    def free_trial_term_present(self) -> str:
+        return self.get_sns_content().get('isFreeTrialTermPresent') or 'false'
+
+    @property
     def event_source_arn(self) -> str:
         return self.__get('eventSourceARN')
 

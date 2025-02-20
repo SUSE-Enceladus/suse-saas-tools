@@ -65,7 +65,7 @@ def lambda_handler(event, context):
                     'Type' : 'str',
                     'MessageId : 'str',
                     'TopicArn' : 'str',
-                    'Message' : 'SNS raw message quoted text',
+                    'Message' : 'SNS raw message quoted json text',
                     'Timestamp' : 'str',
                     'SignatureVersion' : 'str',
                     'Signature' : 'str',
@@ -122,6 +122,7 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
     Ensure the message is proper format. Get the customer
     entitlements and send the information to the SCC service.
     """
+    sqs_event_manager_config = Defaults.get_sqs_event_manager_config()
     result = {
         'itemIdentifier': record.get('messageId') or 'unknown',
         'status': 'unknown',
@@ -129,41 +130,49 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
     }
     try:
         message = AWSSNSMessage(record)
+        auth_token = sqs_event_manager_config.get('auth_token', '')
+        endpoint_missing = 'missing_endpoint_setup'
         if not message.action:
             result['status'] = 'No action defined in SNS message'
             logger.error(result['status'])
         elif message.action == 'entitlement-updated':
-            # Notify SCC of customer entitlement change for the given product
-            customer_id = message.customer_id
-            product_code = message.product_code
-            logger.info(
-                'requesting entitlements for customer {} and product {}'.format(
-                    customer_id, product_code
+            endpoint_url = sqs_event_manager_config.get(
+                'entitlement_change_url', endpoint_missing
+            )
+            result.update(
+                send_to(
+                    entitlement_updated(message), endpoint_url, auth_token
                 )
             )
-            entitlements = AWSCustomerEntitlement(
-                customer_id, product_code
+        elif message.action == 'subscribe-success':
+            endpoint_url = sqs_event_manager_config.get(
+                'subscribe_success_url', endpoint_missing
             )
-            request_data = {
-                'customerIdentifier': customer_id,
-                'marketplaceIdentifier': 'AWS',
-                'productCode': product_code,
-                'entitlements': entitlements.get_entitlements()
-            }
-            sqs_event_manager_config = Defaults.get_sqs_event_manager_config()
-            headers = {
-                'Content-Type': 'application/json'
-            }
-            auth_token = sqs_event_manager_config.get('auth_token')
-            if auth_token:
-                headers['Authorization'] = f'Bearer {auth_token}'
-            http_post_response = requests.post(
-                sqs_event_manager_config['entitlement_change_url'],
-                data=request_data,
-                headers=headers
+            result.update(
+                send_to(
+                    subscription_success(message), endpoint_url, auth_token
+                )
             )
-            http_post_response.raise_for_status()
-            result['status'] = format(http_post_response.status_code)
+        elif message.action == 'unsubscribe-success':
+            endpoint_url = sqs_event_manager_config.get(
+                'unsubscribe_success_url', endpoint_missing
+            )
+            result.update(
+                send_to(
+                    subscription_removed(message), endpoint_url, auth_token
+                )
+            )
+        elif message.action == 'subscribe-fail':
+            endpoint_url = sqs_event_manager_config.get(
+                'subscribe_fail_url', endpoint_missing
+            )
+            result.update(
+                send_to(
+                    subscription_failed(message), endpoint_url, auth_token
+                )
+            )
+        elif message.action == 'unsubscribe-pending':
+            result['status'] = f'Action to {message.action} not handled by SCC'
             result['error'] = False
         else:
             result['status'] = f'Action type {message.action}: not implemented'
@@ -177,3 +186,79 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
         result['status'] = f'{type(error).__name__}: {error}'
         logger.error(result['status'])
     return result
+
+
+def subscription_success(message: AWSSNSMessage) -> Dict:
+    """
+    Construct request to notify about subscription successfully processed
+    """
+    request_data = basic_request(message)
+    request_data['offerIdentifier'] = message.offer_id
+    request_data['isFreeTrialTermPresent'] = message.free_trial_term_present
+    return request_data
+
+
+def subscription_removed(message: AWSSNSMessage) -> Dict:
+    """
+    Construct request to notify about subscription successfully removed
+    """
+    request_data = basic_request(message)
+    request_data['offerIdentifier'] = message.offer_id
+    request_data['isFreeTrialTermPresent'] = message.free_trial_term_present
+    return request_data
+
+
+def subscription_failed(message: AWSSNSMessage) -> Dict:
+    """
+    Construct request to notify about a failed subscription process
+    """
+    request_data = basic_request(message)
+    request_data['offerIdentifier'] = message.offer_id
+    request_data['isFreeTrialTermPresent'] = message.free_trial_term_present
+    return request_data
+
+
+def entitlement_updated(message: AWSSNSMessage) -> Dict:
+    """
+    Construct request to notify about customer entitlement
+    change for the given product
+    """
+    return basic_request(message)
+
+
+def send_to(
+    request_data: Dict, endpoint_url: str, auth_token: str = ''
+) -> Dict:
+    """
+    Send POST request with notification data to given endpoint.
+    The method raises an exception if the request fails
+    """
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    if auth_token:
+        headers['Authorization'] = f'Bearer {auth_token}'
+    http_post_response = requests.post(
+        endpoint_url, data=request_data, headers=headers
+    )
+    http_post_response.raise_for_status()
+    return {
+        'status': format(http_post_response.status_code),
+        'error': False
+    }
+
+
+def basic_request(message: AWSSNSMessage) -> Dict:
+    """
+    Build a basic request common to all expected events
+    """
+    entitlements = AWSCustomerEntitlement(
+        message.customer_id, message.product_code
+    )
+    request_data = {
+        'customerIdentifier': message.customer_id,
+        'marketplaceIdentifier': 'AWS',
+        'productCode': message.product_code,
+        'entitlements': entitlements.get_entitlements()
+    }
+    return request_data

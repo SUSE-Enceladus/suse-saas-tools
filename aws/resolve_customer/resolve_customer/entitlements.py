@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with mash.  If not, see <http://www.gnu.org/licenses/>
 #
+import logging
 import boto3
 from botocore.exceptions import ClientError
 from resolve_customer.defaults import Defaults
@@ -25,6 +26,9 @@ from resolve_customer.error import (
 from typing import (
     List, Dict
 )
+
+logger = logging.getLogger('marketplace_entitlement')
+logger.setLevel('INFO')
 
 
 class AWSCustomerEntitlement:
@@ -38,6 +42,11 @@ class AWSCustomerEntitlement:
         config = Defaults.get_assume_role_config()
         role: Dict[str, Dict[str, str]] = config.get('role') or {}
         if customer_id and product_code and role:
+            logger.info(
+                'requesting entitlements for customer {} and product {}'.format(
+                    customer_id, product_code
+                )
+            )
             for region in sorted(role.keys()):
                 try:
                     assume_role = AWSAssumeRole(
