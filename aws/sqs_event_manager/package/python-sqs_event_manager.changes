@@ -1,11 +1,29 @@
--------------------------------------------------------------------
-Mon Jan 27 08:34:50 UTC 2025 - Sean Marlow <smarlowucf@suse.com>
+commit 3250ee880732cc5cf19422f2330960b3c1f90faa
+Author:     Marcus Schäfer <marcus.schaefer@gmail.com>
+AuthorDate: Mon Jan 13 22:25:44 2025 +0100
+Commit:     Marcus Schäfer <marcus.schaefer@gmail.com>
+CommitDate: Wed Jan 15 10:39:40 2025 +0100
 
-- Update sqs request format
-
-  Add cloud identifier and remove keys that are not needed.
-
--------------------------------------------------------------------
-Mon Jan 13 09:14:26 PM CET 2025 - Marcus Schäfer <marcus.schaefer@suse.com>
-
-- kickoff
+    Initial kickoff
+    
+    This commit adds a first idea how to structure the code.
+    The implementations in this project will be used in
+    services provided by the CSPs. We will start with AWS,
+    others might follow. The python implementations are
+    pyproject and poetry based and uses their own python
+    namespaces such that we can package and version them
+    individually while still on the same source git to
+    follow all changes. The commit from here adds a very
+    rough skeleton for two services in AWS. There is
+    the resolve_customer namespace for adding code that
+    uses the AWS ResolveCustomer API and there is the
+    sqs_event_manager which is expected to add code that
+    runs as AWS lambda triggered by SQS events. As delivery
+    method we will use OCI container(s) for which the
+    container path was added and kiwi image descriptions
+    are expected to follow. To build packages from the
+    individual python components/namespaces I have added
+    a concept that consistently build packages sources
+    from a template plus poetry and a make package
+    Makefile target. There are still some parts to discuss,
+    and some open questions.

@@ -5,6 +5,7 @@ python_version = 3
 python_lookup_name = python$(python_version)
 python = $(shell which $(python_lookup_name))
 namespace = $(shell dirname */version.py)
+basedir = $(shell basename $(shell pwd))
 
 version := $(shell \
     test -d '$(namespace)' && $(python) -c \
@@ -17,10 +18,14 @@ package:
 	rm -rf dist
 	poetry build --format=sdist
 	mv dist/*-${version}.tar.gz dist/python-${namespace}.tar.gz
+	helper/update_changelog.py --from ../${basedir} \
+		--since package/python-${namespace}.changes --utc > \
+	dist/python-${namespace}.changes
+	helper/update_changelog.py --from ../${basedir} \
+		--file package/python-${namespace}.changes --utc >> \
+	dist/python-${namespace}.changes
 	cat package/python-${namespace}-spec-template | sed -e s'@%%VERSION@${version}@' \
 		> dist/python-${namespace}.spec
-	cp package/python-${namespace}.changes dist/
-
 
 setup:
 	poetry install --all-extras
