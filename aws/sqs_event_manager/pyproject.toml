@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sqs_event_manager"
-version = "0.0.1"
+version = "0.1.0"
 description = "sqs_event_manager - AWS SQS events"
 license = "GPL-3.0+"
 readme = "README.rst"
