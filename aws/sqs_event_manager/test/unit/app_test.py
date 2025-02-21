@@ -165,7 +165,7 @@ class TestApp:
         record = self.record
         mock_get_sqs_event_manager_config.return_value = self.config
         entitlements = Mock()
-        entitlements.error = None
+        entitlements.error = {}
         mock_AWSCustomerEntitlement.return_value = entitlements
 
         assert process_message(record) == {
@@ -223,3 +223,21 @@ class TestApp:
         with self._caplog.at_level(logging.INFO):
             process_message(record)
             assert 'No action defined in SNS message' in self._caplog.text
+
+    @patch('sqs_event_manager.app.AWSCustomerEntitlement')
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
+    @patch('sqs_event_manager.app.requests')
+    def test_process_message_no_request_on_failure(
+        self, mock_requests, mock_get_sqs_event_manager_config,
+        mock_AWSCustomerEntitlement
+    ):
+        entitlements = Mock()
+        entitlements.error = Mock()
+        mock_AWSCustomerEntitlement.return_value = entitlements
+
+        assert process_message(self.record) == {
+            'error': True,
+            'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
+            'status': f'AWSCustomerEntitlement failed with {entitlements.error}'
+        }
+        assert mock_requests.mock_requests.post.called is False
