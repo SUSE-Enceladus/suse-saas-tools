@@ -132,6 +132,15 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
         message = AWSSNSMessage(record)
         auth_token = sqs_event_manager_config.get('auth_token', '')
         endpoint_missing = 'missing_endpoint_setup'
+        entitlements = AWSCustomerEntitlement(
+            message.customer_id, message.product_code
+        )
+        if entitlements.error:
+            result['status'] = \
+                f'AWSCustomerEntitlement failed with {entitlements.error}'
+            logger.error(result['status'])
+            return result
+
         if not message.action:
             result['status'] = 'No action defined in SNS message'
             logger.error(result['status'])
@@ -141,7 +150,8 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
             )
             result.update(
                 send_to(
-                    entitlement_updated(message), endpoint_url, auth_token
+                    entitlement_updated(message, entitlements),
+                    endpoint_url, auth_token
                 )
             )
         elif message.action == 'subscribe-success':
@@ -150,7 +160,8 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
             )
             result.update(
                 send_to(
-                    subscription_success(message), endpoint_url, auth_token
+                    subscription_success(message, entitlements),
+                    endpoint_url, auth_token
                 )
             )
         elif message.action == 'unsubscribe-success':
@@ -159,7 +170,8 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
             )
             result.update(
                 send_to(
-                    subscription_removed(message), endpoint_url, auth_token
+                    subscription_removed(message, entitlements),
+                    endpoint_url, auth_token
                 )
             )
         elif message.action == 'subscribe-fail':
@@ -168,7 +180,8 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
             )
             result.update(
                 send_to(
-                    subscription_failed(message), endpoint_url, auth_token
+                    subscription_failed(message, entitlements),
+                    endpoint_url, auth_token
                 )
             )
         elif message.action == 'unsubscribe-pending':
@@ -178,7 +191,7 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
             result['status'] = f'Action type {message.action}: not implemented'
             logger.error(result['status'])
 
-        # Always clean up message except on failure
+        # Always clean up message from the queue except on failure
         delete_message(
             message.event_source_arn, message.receipt_handle
         )
@@ -188,42 +201,50 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
     return result
 
 
-def subscription_success(message: AWSSNSMessage) -> Dict:
+def subscription_success(
+    message: AWSSNSMessage, entitlements: AWSCustomerEntitlement
+) -> Dict:
     """
     Construct request to notify about subscription successfully processed
     """
-    request_data = basic_request(message)
+    request_data = basic_request(message, entitlements)
     request_data['offerIdentifier'] = message.offer_id
     request_data['isFreeTrialTermPresent'] = message.free_trial_term_present
     return request_data
 
 
-def subscription_removed(message: AWSSNSMessage) -> Dict:
+def subscription_removed(
+    message: AWSSNSMessage, entitlements: AWSCustomerEntitlement
+) -> Dict:
     """
     Construct request to notify about subscription successfully removed
     """
-    request_data = basic_request(message)
+    request_data = basic_request(message, entitlements)
     request_data['offerIdentifier'] = message.offer_id
     request_data['isFreeTrialTermPresent'] = message.free_trial_term_present
     return request_data
 
 
-def subscription_failed(message: AWSSNSMessage) -> Dict:
+def subscription_failed(
+    message: AWSSNSMessage, entitlements: AWSCustomerEntitlement
+) -> Dict:
     """
     Construct request to notify about a failed subscription process
     """
-    request_data = basic_request(message)
+    request_data = basic_request(message, entitlements)
     request_data['offerIdentifier'] = message.offer_id
     request_data['isFreeTrialTermPresent'] = message.free_trial_term_present
     return request_data
 
 
-def entitlement_updated(message: AWSSNSMessage) -> Dict:
+def entitlement_updated(
+    message: AWSSNSMessage, entitlements: AWSCustomerEntitlement
+) -> Dict:
     """
     Construct request to notify about customer entitlement
     change for the given product
     """
-    return basic_request(message)
+    return basic_request(message, entitlements)
 
 
 def send_to(
@@ -238,6 +259,7 @@ def send_to(
     }
     if auth_token:
         headers['Authorization'] = f'Bearer {auth_token}'
+    logger.info(f'Sending POST data to {endpoint_url}: {request_data}')
     http_post_response = requests.post(
         endpoint_url, data=request_data, headers=headers
     )
@@ -248,13 +270,12 @@ def send_to(
     }
 
 
-def basic_request(message: AWSSNSMessage) -> Dict:
+def basic_request(
+    message: AWSSNSMessage, entitlements: AWSCustomerEntitlement
+) -> Dict:
     """
     Build a basic request common to all expected events
     """
-    entitlements = AWSCustomerEntitlement(
-        message.customer_id, message.product_code
-    )
     request_data = {
         'customerIdentifier': message.customer_id,
         'marketplaceIdentifier': 'AWS',
