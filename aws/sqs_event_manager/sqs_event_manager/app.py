@@ -191,7 +191,7 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
             result['status'] = f'Action type {message.action}: not implemented'
             logger.error(result['status'])
 
-        # Always clean up message from the queue except on failure
+        # Always clean up message from the queue except on a raise condition
         delete_message(
             message.event_source_arn, message.receipt_handle
         )
@@ -263,11 +263,19 @@ def send_to(
     http_post_response = requests.post(
         endpoint_url, json=request_data, headers=headers
     )
-    http_post_response.raise_for_status()
-    return {
-        'status': format(http_post_response.status_code),
-        'error': False
-    }
+    if http_post_response.status_code != 200:
+        result = {
+            'status': f'Event report failed with: {http_post_response.text}',
+            'error': True
+        }
+        logger.error(result['status'])
+    else:
+        result = {
+            'status': 'Event report succeeded',
+            'error': False
+        }
+        logger.info(result['status'])
+    return result
 
 
 def basic_request(

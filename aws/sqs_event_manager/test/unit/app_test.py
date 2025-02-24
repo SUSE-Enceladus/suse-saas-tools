@@ -162,6 +162,10 @@ class TestApp:
         mock_AWSCustomerEntitlement,
         mock_requests
     ):
+        response = Mock()
+        response.status_code = 500
+        response.text = 'some error'
+        mock_requests.post.return_value = response
         record = self.record
         mock_get_sqs_event_manager_config.return_value = self.config
         entitlements = Mock()
@@ -169,10 +173,11 @@ class TestApp:
         mock_AWSCustomerEntitlement.return_value = entitlements
 
         assert process_message(record) == {
-            'error': False,
+            'error': True,
             'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
-            'status': format(mock_requests.post.return_value.status_code)
+            'status': 'Event report failed with: some error'
         }
+        response.status_code = 200
         mock_requests.post.assert_called_once_with(
             'https://inform-me-of-changes.com',
             json={
@@ -203,7 +208,7 @@ class TestApp:
             assert process_message(record) == {
                 'error': False,
                 'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
-                'status': format(mock_requests.post.return_value.status_code)
+                'status': 'Event report succeeded'
             }
 
         mock_requests.post.side_effect = Exception('some-error')
