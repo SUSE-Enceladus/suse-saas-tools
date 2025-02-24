@@ -175,7 +175,7 @@ class TestApp:
         }
         mock_requests.post.assert_called_once_with(
             'https://inform-me-of-changes.com',
-            data={
+            json={
                 'customerIdentifier': 'abc123',
                 'marketplaceIdentifier': 'AWS',
                 'productCode': '7hn1uo40wt6psy10ovxyh4zzn',

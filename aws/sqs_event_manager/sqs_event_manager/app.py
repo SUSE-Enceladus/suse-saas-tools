@@ -261,7 +261,7 @@ def send_to(
         headers['Authorization'] = f'Bearer {auth_token}'
     logger.info(f'Sending POST data to {endpoint_url}: {request_data}')
     http_post_response = requests.post(
-        endpoint_url, data=request_data, headers=headers
+        endpoint_url, json=request_data, headers=headers
     )
     http_post_response.raise_for_status()
     return {
