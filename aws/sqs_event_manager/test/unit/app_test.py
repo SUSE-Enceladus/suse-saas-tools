@@ -155,12 +155,9 @@ class TestApp:
     @patch('sqs_event_manager.app.AWSCustomerEntitlement')
     @patch('sqs_event_manager.app.delete_message')
     @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
-    def test_process_message(
-        self,
-        mock_get_sqs_event_manager_config,
-        mock_delete_message,
-        mock_AWSCustomerEntitlement,
-        mock_requests
+    def test_process_message_500(
+        self, mock_get_sqs_event_manager_config, mock_delete_message,
+        mock_AWSCustomerEntitlement, mock_requests
     ):
         response = Mock()
         response.status_code = 500
@@ -171,13 +168,30 @@ class TestApp:
         entitlements = Mock()
         entitlements.error = {}
         mock_AWSCustomerEntitlement.return_value = entitlements
-
         assert process_message(record) == {
             'error': True,
             'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
             'status': 'Event report failed with: some error'
         }
+
+    @patch('sqs_event_manager.app.requests')
+    @patch('sqs_event_manager.app.AWSCustomerEntitlement')
+    @patch('sqs_event_manager.app.delete_message')
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
+    def test_process_message_request_body_and_header(
+        self, mock_get_sqs_event_manager_config, mock_delete_message,
+        mock_AWSCustomerEntitlement, mock_requests
+    ):
+        response = Mock()
         response.status_code = 200
+        response.text = 'some error'
+        mock_requests.post.return_value = response
+        record = self.record
+        mock_get_sqs_event_manager_config.return_value = self.config
+        entitlements = Mock()
+        entitlements.error = {}
+        mock_AWSCustomerEntitlement.return_value = entitlements
+        process_message(record)
         mock_requests.post.assert_called_once_with(
             'https://inform-me-of-changes.com',
             json={
@@ -192,6 +206,23 @@ class TestApp:
             }
         )
 
+    @patch('sqs_event_manager.app.requests')
+    @patch('sqs_event_manager.app.AWSCustomerEntitlement')
+    @patch('sqs_event_manager.app.delete_message')
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
+    def test_process_message_unsubscribe_pending(
+        self, mock_get_sqs_event_manager_config, mock_delete_message,
+        mock_AWSCustomerEntitlement, mock_requests
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.text = 'some error'
+        mock_requests.post.return_value = response
+        record = self.record
+        mock_get_sqs_event_manager_config.return_value = self.config
+        entitlements = Mock()
+        entitlements.error = {}
+        mock_AWSCustomerEntitlement.return_value = entitlements
         record['body'] = json.dumps(self.unsubscribe_pending)
         assert process_message(record) == {
             'error': False,
@@ -199,6 +230,23 @@ class TestApp:
             'status': 'Action to unsubscribe-pending not handled by SCC'
         }
 
+    @patch('sqs_event_manager.app.requests')
+    @patch('sqs_event_manager.app.AWSCustomerEntitlement')
+    @patch('sqs_event_manager.app.delete_message')
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
+    def test_process_message_handled_maintenance_events(
+        self, mock_get_sqs_event_manager_config, mock_delete_message,
+        mock_AWSCustomerEntitlement, mock_requests
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.text = 'some error'
+        mock_requests.post.return_value = response
+        record = self.record
+        mock_get_sqs_event_manager_config.return_value = self.config
+        entitlements = Mock()
+        entitlements.error = {}
+        mock_AWSCustomerEntitlement.return_value = entitlements
         for action in [
             self.unsubscribe_success,
             self.subscribe_fail,
@@ -211,28 +259,79 @@ class TestApp:
                 'status': 'Event report succeeded'
             }
 
-        mock_requests.post.side_effect = Exception('some-error')
-        with self._caplog.at_level(logging.ERROR):
-            process_message(record)
-            assert 'some-error' in self._caplog.text
-
+    @patch('sqs_event_manager.app.requests')
+    @patch('sqs_event_manager.app.AWSCustomerEntitlement')
+    @patch('sqs_event_manager.app.delete_message')
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
+    def test_process_message_unknown_event(
+        self, mock_get_sqs_event_manager_config, mock_delete_message,
+        mock_AWSCustomerEntitlement, mock_requests
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.text = 'some error'
+        mock_requests.post.return_value = response
+        record = self.record
+        mock_get_sqs_event_manager_config.return_value = self.config
+        entitlements = Mock()
+        entitlements.error = {}
+        mock_AWSCustomerEntitlement.return_value = entitlements
         record['body'] = record['body'].replace(
-            'subscribe-success', 'fake-event'
+            'entitlement-updated', 'fake-event'
         )
         with self._caplog.at_level(logging.INFO):
             process_message(record)
             assert 'Action type fake-event: not implemented' in \
                 self._caplog.text
 
+    @patch('sqs_event_manager.app.requests')
+    @patch('sqs_event_manager.app.AWSCustomerEntitlement')
+    @patch('sqs_event_manager.app.delete_message')
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
+    def test_process_message_no_event(
+        self, mock_get_sqs_event_manager_config, mock_delete_message,
+        mock_AWSCustomerEntitlement, mock_requests
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.text = 'some error'
+        mock_requests.post.return_value = response
+        record = self.record
+        mock_get_sqs_event_manager_config.return_value = self.config
+        entitlements = Mock()
+        entitlements.error = {}
+        mock_AWSCustomerEntitlement.return_value = entitlements
         record['body'] = record['body'].replace('action', 'actions')
         with self._caplog.at_level(logging.INFO):
             process_message(record)
             assert 'No action defined in SNS message' in self._caplog.text
 
+    @patch('sqs_event_manager.app.requests')
+    @patch('sqs_event_manager.app.AWSCustomerEntitlement')
+    @patch('sqs_event_manager.app.delete_message')
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
+    def test_process_message_post_request_raises(
+        self, mock_get_sqs_event_manager_config, mock_delete_message,
+        mock_AWSCustomerEntitlement, mock_requests
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.text = 'some error'
+        mock_requests.post.return_value = response
+        record = self.record
+        mock_get_sqs_event_manager_config.return_value = self.config
+        entitlements = Mock()
+        entitlements.error = {}
+        mock_AWSCustomerEntitlement.return_value = entitlements
+        mock_requests.post.side_effect = Exception('some-error')
+        with self._caplog.at_level(logging.ERROR):
+            process_message(record)
+            assert 'some-error' in self._caplog.text
+
     @patch('sqs_event_manager.app.AWSCustomerEntitlement')
     @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
     @patch('sqs_event_manager.app.requests')
-    def test_process_message_no_request_on_failure(
+    def test_process_message_get_entitlements_error(
         self, mock_requests, mock_get_sqs_event_manager_config,
         mock_AWSCustomerEntitlement
     ):
