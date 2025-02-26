@@ -263,9 +263,10 @@ def send_to(
     http_post_response = requests.post(
         endpoint_url, json=request_data, headers=headers
     )
-    if http_post_response.status_code != 200:
+    status_code = http_post_response.status_code
+    if status_code != 200:
         result = {
-            'status': f'Event report failed with: {http_post_response.text}',
+            'status': f'Event report failed with: {status_code}:{http_post_response.text or "no response text"}',
             'error': True
         }
         logger.error(result['status'])
