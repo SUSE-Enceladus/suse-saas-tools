@@ -38,6 +38,10 @@ class AWSSNSMessage:
         return self.__get('messageId')
 
     @property
+    def category(self) -> str:
+        return self.body.get('Type') or ''
+
+    @property
     def customer_id(self) -> str:
         return self.get_sns_content().get('customer-identifier') or ''
 
