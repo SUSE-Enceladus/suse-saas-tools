@@ -25,6 +25,18 @@ class TestApp:
         self.config = Defaults.get_sqs_event_manager_config(
             '../data/sqs_event_manager.yml'
         )
+        self.subscription_notification = {
+            "Type": "SubscriptionConfirmation",
+            "MessageId": "123",
+            "Token": "abc",
+            "TopicArn": "arn:aws:sns:...",
+            "Message": "You have chosen to subscribe...",
+            "SubscribeURL": "some",
+            "Timestamp": "2025-03-05T13:09:24.989Z",
+            "SignatureVersion": "1",
+            "Signature": "some",
+            "SigningCertURL": "some.pem"
+        }
         self.entitlement_updated = {
             "Type": "Notification",
             "MessageId": "123",
@@ -259,11 +271,23 @@ class TestApp:
                 'status': 'Event report succeeded'
             }
 
+    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
+    def test_process_message_unknown_event_category(
+        self, mock_get_sqs_event_manager_config
+    ):
+        record = self.record
+        mock_get_sqs_event_manager_config.return_value = self.config
+        record['body'] = json.dumps(self.subscription_notification)
+        with self._caplog.at_level(logging.INFO):
+            process_message(record)
+            assert 'No action implemented for event type:' in \
+                self._caplog.text
+
     @patch('sqs_event_manager.app.requests')
     @patch('sqs_event_manager.app.AWSCustomerEntitlement')
     @patch('sqs_event_manager.app.delete_message')
     @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
-    def test_process_message_unknown_event(
+    def test_process_message_unknown_action(
         self, mock_get_sqs_event_manager_config, mock_delete_message,
         mock_AWSCustomerEntitlement, mock_requests
     ):

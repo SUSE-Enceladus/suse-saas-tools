@@ -130,6 +130,19 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
     }
     try:
         message = AWSSNSMessage(record)
+
+        # All Message data that we handle have the general message Type
+        # category set to 'Notification'. There are other categories
+        # like 'SubscriptionNotification' which are events sent when
+        # someone subscribes a new SNS topic. Probably there are more
+        # Type categories but we want to handle only the ones that comes
+        # in as 'Notification'.
+        if message.category and message.category != 'Notification':
+            result['status'] = \
+                f'No action implemented for event type: {message.category}'
+            logger.info(result['status'])
+            return result
+
         auth_token = sqs_event_manager_config.get('auth_token', '')
         endpoint_missing = 'missing_endpoint_setup'
         entitlements = AWSCustomerEntitlement(
