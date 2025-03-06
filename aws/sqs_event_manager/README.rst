@@ -26,7 +26,7 @@ For the deployment the following steps are needed:
    configuration settings:
 
    * Image -> CMD override -> app_sqs_event_manager.lambda_handler
-   * Configuration -> Timeout 15sec
+   * Configuration -> Timeout 60sec
 
 3. Create an SQS queue:
    
