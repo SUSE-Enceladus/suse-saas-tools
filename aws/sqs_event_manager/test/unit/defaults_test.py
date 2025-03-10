@@ -7,6 +7,7 @@ class TestDefaults:
             'entitlement_change_url': 'https://inform-me-of-changes.com',
             'subscribe_success_url': 'https://inform-me-of-changes.com',
             'unsubscribe_success_url': 'https://inform-me-of-changes.com',
+            'unsubscribe_pending_url': 'https://inform-me-of-changes.com',
             'subscribe_fail_url': 'https://inform-me-of-changes.com',
             'auth_token': 'some'
         }
