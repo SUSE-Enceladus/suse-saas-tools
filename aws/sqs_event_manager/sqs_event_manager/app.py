@@ -198,8 +198,15 @@ def process_message(record: Dict) -> Dict[str, Union[str, bool]]:
                 )
             )
         elif message.action == 'unsubscribe-pending':
-            result['status'] = f'Action to {message.action} not handled by SCC'
-            result['error'] = False
+            endpoint_url = sqs_event_manager_config.get(
+                'unsubscribe_pending_url', endpoint_missing
+            )
+            result.update(
+                send_to(
+                    subscription_removal_pending(message, entitlements),
+                    endpoint_url, auth_token
+                )
+            )
         else:
             result['status'] = f'Action type {message.action}: not implemented'
             logger.error(result['status'])
@@ -219,6 +226,18 @@ def subscription_success(
 ) -> Dict:
     """
     Construct request to notify about subscription successfully processed
+    """
+    request_data = basic_request(message, entitlements)
+    request_data['offerIdentifier'] = message.offer_id
+    request_data['isFreeTrialTermPresent'] = message.free_trial_term_present
+    return request_data
+
+
+def subscription_removal_pending(
+    message: AWSSNSMessage, entitlements: AWSCustomerEntitlement
+) -> Dict:
+    """
+    Construct request to notify about subscription removal pending
     """
     request_data = basic_request(message, entitlements)
     request_data['offerIdentifier'] = message.offer_id

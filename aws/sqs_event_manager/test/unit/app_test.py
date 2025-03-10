@@ -228,30 +228,6 @@ class TestApp:
     @patch('sqs_event_manager.app.AWSCustomerEntitlement')
     @patch('sqs_event_manager.app.delete_message')
     @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
-    def test_process_message_unsubscribe_pending(
-        self, mock_get_sqs_event_manager_config, mock_delete_message,
-        mock_AWSCustomerEntitlement, mock_requests
-    ):
-        response = Mock()
-        response.status_code = 200
-        response.text = 'some error'
-        mock_requests.post.return_value = response
-        record = self.record
-        mock_get_sqs_event_manager_config.return_value = self.config
-        entitlements = Mock()
-        entitlements.error = {}
-        mock_AWSCustomerEntitlement.return_value = entitlements
-        record['body'] = json.dumps(self.unsubscribe_pending)
-        assert process_message(record) == {
-            'error': False,
-            'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
-            'status': 'Action to unsubscribe-pending not handled by SCC'
-        }
-
-    @patch('sqs_event_manager.app.requests')
-    @patch('sqs_event_manager.app.AWSCustomerEntitlement')
-    @patch('sqs_event_manager.app.delete_message')
-    @patch('sqs_event_manager.app.Defaults.get_sqs_event_manager_config')
     def test_process_message_handled_maintenance_events(
         self, mock_get_sqs_event_manager_config, mock_delete_message,
         mock_AWSCustomerEntitlement, mock_requests
@@ -268,7 +244,8 @@ class TestApp:
         for action in [
             self.unsubscribe_success,
             self.subscribe_fail,
-            self.subscribe_success
+            self.subscribe_success,
+            self.unsubscribe_pending
         ]:
             record['body'] = json.dumps(action)
             assert process_message(record) == {
