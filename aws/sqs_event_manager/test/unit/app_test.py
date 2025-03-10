@@ -172,7 +172,7 @@ class TestApp:
         mock_AWSCustomerEntitlement, mock_requests
     ):
         response = Mock()
-        response.status_code = 500
+        response.status_code = 404
         response.text = 'some error'
         mock_requests.post.return_value = response
         record = self.record
@@ -183,7 +183,13 @@ class TestApp:
         assert process_message(record) == {
             'error': True,
             'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
-            'status': 'Event report failed with: some error'
+            'status': 'Event report failed with: 404:some error'
+        }
+        response.text = ''
+        assert process_message(record) == {
+            'error': True,
+            'itemIdentifier': 'c7b2c992-4f07-478e-bfb8-f577e8310550',
+            'status': 'Event report failed with: 404:no response text'
         }
 
     @patch('sqs_event_manager.app.requests')
