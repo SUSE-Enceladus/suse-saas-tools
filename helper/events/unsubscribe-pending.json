@@ -1,0 +1,7 @@
+{
+    "action": "unsubscribe-pending",
+    "customer-identifier": "some-customer",
+    "product-code": "some-product",
+    "offer-identifier": "some-offer",
+    "isFreeTrialTermPresent": true
+}
