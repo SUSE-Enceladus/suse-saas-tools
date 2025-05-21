@@ -57,5 +57,19 @@ def classify_error(
     return error
 
 
+def error_code_matches(error: Dict, aws_code: str) -> bool:
+    status = True if error['Error']['Code'] == aws_code else False
+    return status
+
+
+def set_message(error: Dict, message: str) -> Dict:
+    error['Error']['Message'] = message
+    return error
+
+
+def get_message(error: Dict) -> str:
+    return error['Error']['Message']
+
+
 def log_error(error: Dict) -> None:
     logger.error(error['Error']['Message'])

@@ -21,7 +21,8 @@ from botocore.exceptions import ClientError
 from resolve_customer.defaults import Defaults
 from resolve_customer.assume_role import AWSAssumeRole
 from resolve_customer.error import (
-    error_record, log_error, classify_error
+    error_record, log_error, classify_error,
+    error_code_matches, set_message, get_message
 )
 from typing import (
     Dict, List
@@ -62,6 +63,11 @@ class AWSCustomer:
                     return
                 except ClientError as error:
                     self.error = error.response
+                    if error_code_matches(self.error, 'InvalidTokenException'):
+                        # for invalid tokens, place the token to the error message
+                        self.error = set_message(
+                            self.error, f'{get_message(self.error)}: {token}'
+                        )
                     # Classify group of errors into app exception and HTTP code
                     self.error = classify_error(
                         self.error, 'ExpiredTokenException',

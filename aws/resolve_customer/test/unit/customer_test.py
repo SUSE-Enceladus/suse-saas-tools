@@ -83,9 +83,30 @@ class TestAWSCustomer:
             operation_name=MagicMock(),
             error_response=error_response
         )
-        with self._caplog.at_level(logging.INFO):
+        with self._caplog.at_level(logging.ERROR):
             AWSCustomer('token')
             assert 'meteringmarketplace client failed' in self._caplog.text
+
+    @patch('boto3.client')
+    @patch('resolve_customer.customer.Defaults.get_assume_role_config')
+    @patch('resolve_customer.customer.AWSAssumeRole')
+    def test_invalid_token_in_message(
+        self, mock_AWSAssumeRole, mock_get_assume_role_config,
+        mock_boto_client
+    ):
+        mock_get_assume_role_config.return_value = role_config
+        error_response = error_record(
+            400, 'Registration token is invalid'
+        )
+        error_response['Error']['Code'] = 'InvalidTokenException'
+        mock_boto_client.side_effect = ClientError(
+            operation_name=MagicMock(),
+            error_response=error_response
+        )
+        with self._caplog.at_level(logging.INFO):
+            AWSCustomer('bogus_token')
+            assert 'Registration token is invalid: bogus_token' in \
+                self._caplog.text
 
     def test_get_id(self):
         assert self.customer.get_id() == 'id'
