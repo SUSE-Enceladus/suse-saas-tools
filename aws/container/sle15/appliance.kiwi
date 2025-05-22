@@ -17,7 +17,7 @@
         <rpm-excludedocs>true</rpm-excludedocs>
         <rpm-check-signatures>false</rpm-check-signatures>
         <type image="docker">
-            <containerconfig name="suse_aws_saas" tag="0.0.2" additionalnames=":latest">
+            <containerconfig name="suse_aws_saas" tag="0.0.3" additionalnames=":latest">
                 <entrypoint execute="/lambda-entrypoint.sh"/>
                 <expose>
                     <port number="8080/tcp"/>
