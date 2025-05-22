@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "resolve_customer"
-version = "0.1.0"
+version = "0.1.1"
 description = "resolve_customer - AWS ResolveCustomer API"
 license = "GPL-3.0+"
 readme = "README.rst"
